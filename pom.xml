@@ -23,4 +23,12 @@
     <!-- <module>ems-metrics</module> -->
   </modules>
 
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub OWNER Apache Maven Packages</name>
+      <url>https://maven.pkg.github.com/jaybaws/micrometer-metrics</url>
+    </repository>
+  </distributionManagement>
+
 </project>
