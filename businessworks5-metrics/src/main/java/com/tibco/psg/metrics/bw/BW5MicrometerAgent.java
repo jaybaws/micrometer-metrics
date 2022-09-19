@@ -102,10 +102,14 @@ public class BW5MicrometerAgent implements NotificationListener {
         filter.enableAllObjectNames();
 
         try {
-            // Register ourselves as a listener for MBeans, so we can pick up the bwengine's HMA!
+            /**
+             * Register ourselves as a listener for MBeans, so we can pick up the bwengine's HMA!
+             */
             server.addNotificationListener(MBeanServerDelegate.DELEGATE_NAME, this, filter, null);
 
-            // Force the bwengine to enable JMX, otherwise our plan dies in vain...
+            /**
+             * Force the bwengine to enable JMX, otherwise our plan dies in vain...
+             */
             System.setProperty(c_jvm_arg_jmx, "true");
             LOGGER.info("Programmatically enabled JMX on the BWEngine that's about to start.");
 
@@ -136,25 +140,60 @@ public class BW5MicrometerAgent implements NotificationListener {
                  * Schedule all our workers!
                  */
                 if (scheduleFor("getexecinfo"))
-                    executorService.scheduleWithFixedDelay(new GetExecInfoWorker(server, engineHandle), initDelayFor("getexecinfo"), delayFor("getexecinfo"), TimeUnit.SECONDS);
+                    executorService.scheduleWithFixedDelay(
+                            new GetExecInfoWorker(server, engineHandle),
+                            initDelayFor("getexecinfo"),
+                            delayFor("getexecinfo"),
+                            TimeUnit.SECONDS
+                    );
 
                 if (scheduleFor("getmemoryusage"))
-                    executorService.scheduleWithFixedDelay(new GetMemoryUsageWorker(server, engineHandle), initDelayFor("getmemoryusage"), delayFor("getmemoryusage"), TimeUnit.SECONDS);
+                    executorService.scheduleWithFixedDelay(
+                            new GetMemoryUsageWorker(server, engineHandle),
+                            initDelayFor("getmemoryusage"),
+                            delayFor("getmemoryusage"),
+                            TimeUnit.SECONDS
+                    );
 
                 if (scheduleFor("getprocesscount"))
-                    executorService.scheduleWithFixedDelay(new GetProcessCountWorker(server, engineHandle), initDelayFor("getprocesscount"), delayFor("getprocesscount"), TimeUnit.SECONDS);
+                    executorService.scheduleWithFixedDelay(
+                            new GetProcessCountWorker(server, engineHandle),
+                            initDelayFor("getprocesscount"),
+                            delayFor("getprocesscount"),
+                            TimeUnit.SECONDS
+                    );
 
                 if (scheduleFor("getactiveprocesscount"))
-                    executorService.scheduleWithFixedDelay(new GetActiveProcessCountWorker(server, engineHandle), initDelayFor("getactiveprocesscount"), delayFor("getactiveprocesscount"), TimeUnit.SECONDS);
+                    executorService.scheduleWithFixedDelay(
+                            new GetActiveProcessCountWorker(server, engineHandle),
+                            initDelayFor("getactiveprocesscount"),
+                            delayFor("getactiveprocesscount"),
+                            TimeUnit.SECONDS
+                    );
 
                 if (scheduleFor("getprocessstarters"))
-                    executorService.scheduleWithFixedDelay(new GetProcessStartersWorker(server, engineHandle), initDelayFor("getprocessstarters"), delayFor("getprocessstarters"), TimeUnit.SECONDS);
+                    executorService.scheduleWithFixedDelay(
+                            new GetProcessStartersWorker(server, engineHandle),
+                            initDelayFor("getprocessstarters"),
+                            delayFor("getprocessstarters"),
+                            TimeUnit.SECONDS
+                    );
 
                 if (scheduleFor("getprocessdefinitions"))
-                    executorService.scheduleWithFixedDelay(new GetProcessDefinitionsWorker(server, engineHandle), initDelayFor("getprocessdefinitions"), delayFor("getprocessdefinitions"), TimeUnit.SECONDS);
+                    executorService.scheduleWithFixedDelay(
+                            new GetProcessDefinitionsWorker(server, engineHandle),
+                            initDelayFor("getprocessdefinitions"),
+                            delayFor("getprocessdefinitions"),
+                            TimeUnit.SECONDS
+                    );
 
                 if (scheduleFor("getactivities"))
-                    executorService.scheduleWithFixedDelay(new GetActivitiesWorker(server, engineHandle), initDelayFor("getactivities"), delayFor("getactivities"), TimeUnit.SECONDS);
+                    executorService.scheduleWithFixedDelay(
+                            new GetActivitiesWorker(server, engineHandle),
+                            initDelayFor("getactivities"),
+                            delayFor("getactivities"),
+                            TimeUnit.SECONDS
+                    );
 
                 LOGGER.info("Scheduled the workers!");
 
@@ -179,6 +218,9 @@ public class BW5MicrometerAgent implements NotificationListener {
     private static int initDelayFor(String method) {
         String defaultValue;
 
+        /**
+         * By default, avoid having all the load at the same time.
+         */
         switch (method) {
             case "getexecinfo": defaultValue = "5"; break;
             case "getmemoryusage": defaultValue = "10"; break;
