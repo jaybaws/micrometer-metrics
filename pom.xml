@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.tibco.psg.metrics</groupId>
+  <artifactId>micrometer-metrics</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>micrometer-metrics</name>
+  <url>https://github.com/jaybaws/micrometer-metrics</url>
+
+  <properties>
+    <global.version>1.0.0-SNAPSHOT</global.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <micrometer.version>1.9.4</micrometer.version>
+  </properties>
+
+  <modules>
+    <module>businessworks5-metrics</module>
+    <module>ems-metrics</module>
+  </modules>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub OWNER Apache Maven Packages</name>
+      <url>https://maven.pkg.github.com/jaybaws/micrometer-metrics</url>
+    </repository>
+  </distributionManagement>
+
+</project>
