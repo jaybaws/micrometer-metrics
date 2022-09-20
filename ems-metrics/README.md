@@ -35,25 +35,34 @@ The following JVM arguments can be passed into the application:
 
 ### Configure for Azure Application Insights
 
-1. Read Application Insights documentation
+1. Prepare
 
-https://learn.microsoft.com/en-us/azure/azure-monitor/app/java-in-process-agent
+- Study the [Application Insights documentation](https://learn.microsoft.com/en-us/azure/azure-monitor/app/java-in-process-agent)
+- Install Java 8 or higher on your runtime environment.
 
-2. Download application insights .jar
+2. Download the application insights `.jar` java-agent into any folder of your liking.
 
-https://learn.microsoft.com/en-us/azure/azure-monitor/app/java-in-process-agent#download-the-jar-file
+See [these instructions](https://learn.microsoft.com/en-us/azure/azure-monitor/app/java-in-process-agent#download-the-jar-file) for more details.
 
-3. Run the application
+3. Download the ems-metrics `jar`
+
+Place the `ems-metrics-${version}.jar` file into a directory of your liking.
+
+4. Set up the TIBCO EMS Java client
+
+Copy the EMS (admin) client `.jar`'s into a `./lib` subfolder, relative to the location where you just 
+installed the `ems-metrics-${version}.jar` file.
+
+5. Run the application
+
+From the directory where you installed `ems-metrics-${version}.jar`, run the following:
 
 ```
 java \
-  -javaagent:/path/to/applicationinsights-agent-3.4.0.jar \
-  -jar /path/to/ems-metrics-1.0.0.jar \
-  -cp /path/to/ems/8.x/lib \
-  -Dcom.tibco.psg.metrics.ems.user=myUser \
-  -Dcom.tibco.psg.metrics.ems.password=secret \
-  -Dcom.tibco.psg.metrics.ems.url="tcp://localhost:7222" \
-  -Dapplicationinsights.connection.string="<value>" \
-  -Dapplicationinsights.role.name=ems-micrometer-metrics" \
+  -javaagent:/home/tibco/applicationinsights-agent-3.4.0.jar \
+  -Dcom.tibco.psg.metrics.ems.user=${user} \
+  -Dcom.tibco.psg.metrics.ems.password=${password} \
+  -Dcom.tibco.psg.metrics.ems.url="tcp://${host}:${port}" \
+  -Dapplicationinsights.role.name=ems-micrometer-metrics \
+  -jar ./ems-metrics-${version}.jar \
 ```
-
