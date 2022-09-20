@@ -20,7 +20,7 @@
 
   <modules>
     <module>businessworks5-metrics</module>
-    <!-- <module>ems-metrics</module> -->
+    <module>ems-metrics</module>
   </modules>
 
   <distributionManagement>
