@@ -22,13 +22,16 @@ public class MQMicrometerApp {
     private static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(c_executorService_corePoolSize);
 
     public static void main(String[] args) {
+        /**
+         * docker run --env MQ_DEV=true --env MQ_QMGR_NAME=QMGR --env LICENSE=accept -p 14140:1414 ibmcom/mq:latest
+         */
         LOGGER.info("Starting IBM MQ Micrometer metrics application...");
 
         String qmgr = System.getProperty(c_jvm_arg_ibmmq_qmgr, "QMGR");
         String host = System.getProperty(c_jvm_arg_ibmmq_host, "localhost");
-        int    port = Integer.valueOf(System.getProperty(c_jvm_arg_ibmmq_port, "1414"));
-        String chan = System.getProperty(c_jvm_arg_ibmmq_user, "admin");
-        String user = System.getProperty(c_jvm_arg_ibmmq_chan, "DEV.ADMIN.SVRCONN");
+        int    port = Integer.valueOf(System.getProperty(c_jvm_arg_ibmmq_port, "14140"));
+        String chan = System.getProperty(c_jvm_arg_ibmmq_chan, "DEV.ADMIN.SVRCONN");
+        String user = System.getProperty(c_jvm_arg_ibmmq_user, "admin");
         String pass = System.getProperty(c_jvm_arg_ibmmq_pass, "passw0rd");
 
         executorService.scheduleWithFixedDelay(

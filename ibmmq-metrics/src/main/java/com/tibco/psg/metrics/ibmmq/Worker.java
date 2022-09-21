@@ -1,9 +1,9 @@
 package com.tibco.psg.metrics.ibmmq;
-import com.ibm.mq.MQException;
-import com.ibm.mq.MQQueue;
 import com.ibm.mq.MQQueueManager;
-import com.ibm.mq.constants.MQConstants;
-import com.ibm.msg.client.wmq.compat.base.internal.MQC;
+import com.ibm.mq.constants.CMQC;
+import com.ibm.mq.constants.CMQCFC;
+import com.ibm.mq.headers.pcf.PCFMessage;
+import com.ibm.mq.headers.pcf.PCFMessageAgent;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
 import java.util.Arrays;
@@ -48,7 +48,7 @@ public class Worker implements Runnable {
         AtomicLong m = metrics.get(uniqueId);
         if (m == null) {
             m = Metrics.gauge(
-                    String.format("ems.%s.%s", category, metric),
+                    String.format("ibmmq.%s.%s", category, metric),
                     Arrays.asList(
                             Tag.of("item", detail)
                     ),
@@ -68,37 +68,52 @@ public class Worker implements Runnable {
              *
              * sauces:
              * - https://stackoverflow.com/questions/63898748/ibm-mq-pcf-using-to-get-subscriber-count-with-a-particular-topic
+             * - https://www.capitalware.com/rl_blog/?p=5463
              */
-            //Create a Hashtable with required properties
-            Hashtable properties = new Hashtable<String, Object>();
-            properties.put("hostname", host);
-            properties.put("port", port);
-            properties.put("channel", chan);
 
-            final String queueName = "sampleQueue";
+            Hashtable properties = new Hashtable<String, Object>();
+            properties.put(CMQC.HOST_NAME_PROPERTY, host);
+            properties.put(CMQC.PORT_PROPERTY, port);
+            properties.put(CMQC.CHANNEL_PROPERTY, chan);
+            properties.put(CMQC.USER_ID_PROPERTY, user);
+            properties.put(CMQC.PASSWORD_PROPERTY, pass);
 
             MQQueueManager qMgr = new MQQueueManager(qmgr, properties);
-            MQQueue queue = qMgr.accessQueue(queueName, MQC.MQOO_INQUIRE);
+            boolean isConnected = qMgr.isConnected();
 
-            int depth = queue.getCurrentDepth();
-            int inputCount = queue.getOpenInputCount();
-            int outputCount = queue.getOpenOutputCount();
+            trackMetric("qmgr", "is_connected", "").set( (isConnected) ? 1 : 0 );
 
-            LOGGER.info(
-                    String.format(
-                            "Queue '%s' has %d messages, and %d receivers and %d senders.",
-                            queueName,
-                            depth,
-                            inputCount,
-                            outputCount
-                    )
-            );
+            PCFMessageAgent agent = new PCFMessageAgent(qMgr);
 
-            queue.close();
+            PCFMessage request = new PCFMessage(CMQCFC.MQCMD_INQUIRE_Q);
+            request.addParameter(CMQC.MQCA_Q_NAME, "SYSTEM.CLUSTER.REPOSITORY.QUEUE");
+            request.addParameter(CMQC.MQIA_Q_TYPE, CMQC.MQQT_LOCAL);
+            request.addParameter(CMQCFC.MQIACF_Q_ATTRS, new int [] { CMQCFC.MQIACF_ALL });
+
+            PCFMessage[] responses = agent.send(request);
+
+            for (PCFMessage response : responses) {
+                if ((response.getCompCode() == CMQC.MQCC_OK) && (response.getParameterValue(CMQC.MQCA_Q_NAME) != null)) {
+                    String name = response.getStringParameterValue(CMQC.MQCA_Q_NAME);
+                    if (name != null)
+                        name = name.trim();
+
+                    int q_depth = response.getIntParameterValue(CMQC.MQIA_CURRENT_Q_DEPTH);
+                    int q_open_input_count = response.getIntParameterValue(CMQC.MQIA_OPEN_INPUT_COUNT);
+                    int q_open_output_count = response.getIntParameterValue(CMQC.MQIA_OPEN_OUTPUT_COUNT);
+
+                    trackMetric("qlocal", "depth", name).set(q_depth);
+                    trackMetric("qlocal", "open_input_count", name).set(q_open_input_count);
+                    trackMetric("qlocal", "open_output_count", name).set(q_open_output_count);
+
+                }
+            }
+
+            agent.disconnect();
             qMgr.disconnect();
 
-        } catch (MQException e) {
-            e.printStackTrace();
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
 
     }
