@@ -2,14 +2,16 @@ package com.tibco.psg.metrics.ibmmq;
 import com.ibm.mq.MQQueueManager;
 import com.ibm.mq.constants.CMQC;
 import com.ibm.mq.constants.CMQCFC;
+import com.ibm.mq.headers.MQData;
+import com.ibm.mq.headers.MQDataException;
+import com.ibm.mq.headers.pcf.PCFException;
 import com.ibm.mq.headers.pcf.PCFMessage;
 import com.ibm.mq.headers.pcf.PCFMessageAgent;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Map;
+
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,32 +63,67 @@ public class Worker implements Runnable {
 
     @Override
     public void run() {
-        try {
-            /**
-             * @TODO!
-             *
-             * sauces:
-             * - https://stackoverflow.com/questions/63898748/ibm-mq-pcf-using-to-get-subscriber-count-with-a-particular-topic
-             * - https://www.capitalware.com/rl_blog/?p=5463
-             */
 
+        boolean succeeded = false;
+
+        try {
             MQQueueManager qMgr = new MQQueueManager(qmgrName, connectionProperties);
             PCFMessageAgent agent = new PCFMessageAgent(qMgr);
 
-            doServer(qMgr);
-            doQueues(agent);
+            doServer(qMgr, agent);
             doChannels(agent);
+            doQueues(agent);
+            doTopics(agent);
             doSubscriptions(agent);
+            doListeners(agent);
+            doServices(agent);
 
             agent.disconnect();
             qMgr.disconnect();
+
+            succeeded = true;
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "Something went wrong during the worker-run!", t);
+        } finally {
+            trackMetric("qmgr", "available", "").set( (succeeded) ? 1 : 0 );
         }
     }
 
-    private void doServer(MQQueueManager qmgr) {
+    private void doServer(MQQueueManager qmgr, PCFMessageAgent agent) {
         trackMetric("qmgr", "is_connected", "").set( (qmgr.isConnected()) ? 1 : 0 );
+
+        try {
+            PCFMessage request = new PCFMessage(CMQCFC.MQCMD_INQUIRE_Q_MGR_STATUS);
+            request.addParameter(CMQCFC.MQIACF_Q_MGR_STATUS_ATTRS, new int[]{CMQCFC.MQIACF_ALL});
+            PCFMessage[] responses = agent.send(request);
+
+            for (PCFMessage response : responses) {
+                if ((response.getCompCode() == CMQC.MQCC_OK) && (response.getParameterValue(CMQC.MQCA_Q_MGR_NAME) != null) ) {
+                    String name = response.getStringParameterValue(CMQC.MQCA_Q_MGR_NAME);
+                    if (name != null)
+                        name = name.trim();
+
+                    int status = response.getIntParameterValue(CMQCFC.MQIACF_Q_MGR_STATUS);
+                    int archive_log_size = response.getIntParameterValue(CMQCFC.MQIACF_ARCHIVE_LOG_SIZE);
+                    int chinit_status = response.getIntParameterValue(CMQCFC.MQIACF_CHINIT_STATUS);
+                    int cmdserver_status = response.getIntParameterValue(CMQCFC.MQIACF_CMD_SERVER_STATUS);
+                    int connection_count = response.getIntParameterValue(CMQCFC.MQIACF_CONNECTION_COUNT);
+                    int ldap_connection_status = response.getIntParameterValue(CMQCFC.MQIACF_LDAP_CONNECTION_STATUS);
+
+                    trackMetric("qmgr", "status", name).set(status);
+                    trackMetric("qmgr", "archive_log_size", name).set(archive_log_size);
+                    trackMetric("qmgr", "chinit_status", name).set(chinit_status);
+                    trackMetric("qmgr", "cmdserver_status", name).set(cmdserver_status);
+                    trackMetric("qmgr", "connection_count", name).set(connection_count);
+                    trackMetric("qmgr", "ldap_connection_status", name).set(ldap_connection_status);
+                }
+            }
+        } catch (PCFException e) {
+            if (e.reasonCode != 2085)
+                LOGGER.log(Level.WARNING, "PCF Error occurred while tracking IBM MQ queue manager metrics.", e);
+        } catch (IOException | MQDataException e) {
+            LOGGER.log(Level.WARNING, "IO or Data error occurred while tracking IBM MQ queue manager metrics.", e);
+        }
     }
 
     private void doQueues(PCFMessageAgent agent) {
@@ -113,8 +150,11 @@ public class Worker implements Runnable {
                     trackMetric("qlocal", "open_output_count", name).set(q_open_output_count);
                 }
             }
-        } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Error occurred while tracking IBM MQ queue metrics.", t);
+        } catch (PCFException e) {
+            if (e.reasonCode != 2085)
+                LOGGER.log(Level.WARNING, "PCF Error occurred while tracking IBM MQ queue metrics.", e);
+        } catch (IOException | MQDataException e) {
+            LOGGER.log(Level.WARNING, "IO or Data error occurred while tracking IBM MQ queue metrics.", e);
         }
     }
 
@@ -150,13 +190,124 @@ public class Worker implements Runnable {
                     trackMetric("channels", "substate", name).set(channel_substate);
                 }
             }
-        } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Error occurred while tracking IBM MQ queue metrics.", t);
+        } catch (PCFException e) {
+            if (e.reasonCode != 2085)
+                LOGGER.log(Level.WARNING, "PCF Error occurred while tracking IBM MQ channel metrics.", e);
+        } catch (IOException | MQDataException e) {
+            LOGGER.log(Level.WARNING, "IO or Data error occurred while tracking IBM MQ channel metrics.", e);
         }
     }
 
     private void doSubscriptions(PCFMessageAgent agent) {
-        // @TODO!
+        try {
+            PCFMessage request = new PCFMessage(CMQCFC.MQCMD_INQUIRE_SUB_STATUS);
+            request.addParameter(CMQCFC.MQCACF_SUB_NAME, "*");
+            request.addParameter(CMQCFC.MQIACF_SUB_STATUS_ATTRS, new int[]{CMQCFC.MQIACF_ALL});
+            PCFMessage[] responses = agent.send(request);
+
+            for (PCFMessage response : responses) {
+                if ((response.getCompCode() == CMQC.MQCC_OK) && (response.getParameterValue(CMQCFC.MQCACF_SUB_NAME) != null)) {
+                    String name = response.getStringParameterValue(CMQCFC.MQCACF_SUB_NAME);
+                    if (name != null)
+                        name = name.trim();
+
+                    int message_count = response.getIntParameterValue(CMQCFC.MQIACF_MESSAGE_COUNT);
+
+                    trackMetric("subscriptions", "message_count", name).set(message_count);
+                }
+            }
+        } catch (PCFException e) {
+            if (e.reasonCode != 2085)
+                LOGGER.log(Level.WARNING, "PCF Error occurred while tracking IBM MQ subscriptionm metrics.", e);
+        } catch (IOException | MQDataException e) {
+            LOGGER.log(Level.WARNING, "IO or Data error occurred while tracking IBM MQ subscription metrics.", e);
+        }
     }
 
+    public void doTopics(PCFMessageAgent agent) {
+        try {
+
+            PCFMessage topicsRequest = new PCFMessage(CMQCFC.MQCMD_INQUIRE_TOPIC);
+            topicsRequest.addParameter(CMQC.MQCA_TOPIC_NAME, "*");
+            PCFMessage[] topicsResponses = agent.send(topicsRequest);
+
+            for (PCFMessage topicResponse : topicsResponses) {
+                String topicName = topicResponse.getStringParameterValue(CMQC.MQCA_TOPIC_NAME);
+                String topicString = topicResponse.getStringParameterValue(CMQC.MQCA_TOPIC_STRING);
+
+                PCFMessage request = new PCFMessage(CMQCFC.MQCMD_INQUIRE_TOPIC_STATUS);
+                request.addParameter(CMQC.MQCA_TOPIC_STRING, topicString);
+                PCFMessage[] responses = agent.send(request);
+
+                for (PCFMessage response : responses) {
+                    if ((response.getCompCode() == CMQC.MQCC_OK) ) {
+                        int pubCount = response.getIntParameterValue(CMQC.MQIA_PUB_COUNT);
+                        int subCount = response.getIntParameterValue(CMQC.MQIA_SUB_COUNT);
+
+                        trackMetric("topic", "pub_count", topicName).set(pubCount);
+                        trackMetric("topic", "sub_count", topicName).set(subCount);
+                    }
+                }
+            }
+        } catch (PCFException e) {
+            if (e.reasonCode != 2085)
+                LOGGER.log(Level.WARNING, "PCF Error occurred while tracking IBM MQ topic metrics.", e);
+        } catch (IOException | MQDataException e) {
+            LOGGER.log(Level.WARNING, "IO or Data error occurred while tracking IBM MQ topic metrics.", e);
+        }
+    }
+
+    public void doListeners(PCFMessageAgent agent) {
+        try {
+            PCFMessage request = new PCFMessage(CMQCFC.MQCMD_INQUIRE_LISTENER_STATUS);
+            request.addParameter(CMQCFC.MQCACH_LISTENER_NAME, "*");
+            request.addParameter(CMQCFC.MQIACF_LISTENER_STATUS_ATTRS, new int[]{CMQCFC.MQIACF_ALL});
+            PCFMessage[] responses = agent.send(request);
+
+            for (PCFMessage response : responses) {
+                if ((response.getCompCode() == CMQC.MQCC_OK) && (response.getParameterValue(CMQCFC.MQCACH_LISTENER_NAME) != null)) {
+                    String name = response.getStringParameterValue(CMQCFC.MQCACH_LISTENER_NAME);
+                    if (name != null)
+                        name = name.trim();
+
+                    int status = response.getIntParameterValue(CMQCFC.MQIACH_LISTENER_STATUS);
+                    int backlog = response.getIntParameterValue(CMQCFC.MQIACH_BACKLOG);
+
+                    trackMetric("listener", "status", name).set(status);
+                    trackMetric("listener", "backlog", name).set(backlog);
+                }
+            }
+        } catch (PCFException e) {
+            if (e.reasonCode != 2085)
+                LOGGER.log(Level.WARNING, "PCF Error occurred while tracking IBM MQ listener metrics.", e);
+        } catch (IOException | MQDataException e) {
+            LOGGER.log(Level.WARNING, "IO or Data error occurred while tracking IBM MQ listener metrics.", e);
+        }
+    }
+
+    public void doServices(PCFMessageAgent agent) {
+        try {
+            PCFMessage request = new PCFMessage(CMQCFC.MQCMD_INQUIRE_SERVICE_STATUS);
+            request.addParameter(CMQC.MQCA_SERVICE_NAME, "*");
+            request.addParameter(CMQCFC.MQIACF_SERVICE_STATUS_ATTRS, new int[]{CMQCFC.MQIACF_ALL});
+            PCFMessage[] responses = agent.send(request);
+
+            for (PCFMessage response : responses) {
+                if ((response.getCompCode() == CMQC.MQCC_OK) && (response.getParameterValue(CMQC.MQCA_SERVICE_NAME) != null)) {
+                    String name = response.getStringParameterValue(CMQC.MQCA_SERVICE_NAME);
+                    if (name != null)
+                        name = name.trim();
+
+                    int status = response.getIntParameterValue(CMQCFC.MQIACF_SERVICE_STATUS);
+
+                    trackMetric("service", "status", name).set(status);
+                }
+            }
+        } catch (PCFException e) {
+            if (e.reasonCode != 2085)
+                LOGGER.log(Level.WARNING, "PCF Error occurred while tracking IBM MQ service metrics.", e);
+        } catch (IOException | MQDataException e) {
+            LOGGER.log(Level.WARNING, "IO or Data error occurred while tracking IBM MQ service metrics.", e);
+        }
+    }
 }
