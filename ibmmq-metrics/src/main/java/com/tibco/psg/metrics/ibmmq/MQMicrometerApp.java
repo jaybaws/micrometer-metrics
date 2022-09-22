@@ -34,8 +34,10 @@ public class MQMicrometerApp {
         String user = System.getProperty(c_jvm_arg_ibmmq_user, "admin");
         String pass = System.getProperty(c_jvm_arg_ibmmq_pass, "passw0rd");
 
+        Worker worker = new Worker(qmgr, host, port, chan, user, pass);
+
         executorService.scheduleWithFixedDelay(
-                new Worker(qmgr, host, port, chan, user, pass),
+                worker,
                 0,
                 60,
                 TimeUnit.SECONDS
