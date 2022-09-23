@@ -2,15 +2,14 @@ package com.tibco.psg.metrics.ibmmq;
 import com.ibm.mq.MQQueueManager;
 import com.ibm.mq.constants.CMQC;
 import com.ibm.mq.constants.CMQCFC;
-import com.ibm.mq.headers.MQData;
 import com.ibm.mq.headers.MQDataException;
 import com.ibm.mq.headers.pcf.PCFException;
 import com.ibm.mq.headers.pcf.PCFMessage;
 import com.ibm.mq.headers.pcf.PCFMessageAgent;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
-
 import java.io.IOException;
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -24,13 +23,12 @@ public class Worker implements Runnable {
 
     private final Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
     private final String qmgrName;
+    private final String ccdtUrl;
 
-    public Worker(String qmgr, String host, int port, String chan, String user, String pass) {
+    public Worker(String qmgr, String ccdt, String user, String pass) {
         qmgrName = qmgr;
+        ccdtUrl = ccdt;
 
-        connectionProperties.put(CMQC.HOST_NAME_PROPERTY, host);
-        connectionProperties.put(CMQC.PORT_PROPERTY, port);
-        connectionProperties.put(CMQC.CHANNEL_PROPERTY, chan);
         connectionProperties.put(CMQC.USER_ID_PROPERTY, user);
         connectionProperties.put(CMQC.PASSWORD_PROPERTY, pass);
         connectionProperties.put(CMQC.USE_MQCSP_AUTHENTICATION_PROPERTY, true);
@@ -67,7 +65,8 @@ public class Worker implements Runnable {
         boolean succeeded = false;
 
         try {
-            MQQueueManager qMgr = new MQQueueManager(qmgrName, connectionProperties);
+            URL ccdt = new URL(ccdtUrl);
+            MQQueueManager qMgr = new MQQueueManager(qmgrName, connectionProperties, ccdt);
             PCFMessageAgent agent = new PCFMessageAgent(qMgr);
 
             doServer(qMgr, agent);

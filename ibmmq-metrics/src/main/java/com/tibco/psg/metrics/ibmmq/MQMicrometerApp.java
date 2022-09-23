@@ -11,9 +11,7 @@ public class MQMicrometerApp {
     private static final String c_jvm_arg_prefix = MQMicrometerApp.class.getPackage().getName();
 
     private static final String c_jvm_arg_ibmmq_qmgr = c_jvm_arg_prefix + ".qmgr";
-    private static final String c_jvm_arg_ibmmq_host = c_jvm_arg_prefix + ".host";
-    private static final String c_jvm_arg_ibmmq_port = c_jvm_arg_prefix + ".port";
-    private static final String c_jvm_arg_ibmmq_chan = c_jvm_arg_prefix + ".chan";
+    private static final String c_jvm_arg_ibmmq_ccdt = c_jvm_arg_prefix + ".ccdt";
     private static final String c_jvm_arg_ibmmq_user = c_jvm_arg_prefix + ".user";
     private static final String c_jvm_arg_ibmmq_pass = c_jvm_arg_prefix + ".pass";
 
@@ -23,18 +21,16 @@ public class MQMicrometerApp {
 
     public static void main(String[] args) {
         /**
-         * docker run --env MQ_DEV=true --env MQ_QMGR_NAME=QMGR --env LICENSE=accept -p 14140:1414 ibmcom/mq:latest
+         * docker run -d --env MQ_DEV=true --env MQ_QMGR_NAME=QMGR --env LICENSE=accept -p 14140:1414 ibmcom/mq:latest
          */
         LOGGER.info("Starting IBM MQ Micrometer metrics application...");
 
         String qmgr = System.getProperty(c_jvm_arg_ibmmq_qmgr, "QMGR");
-        String host = System.getProperty(c_jvm_arg_ibmmq_host, "localhost");
-        int    port = Integer.valueOf(System.getProperty(c_jvm_arg_ibmmq_port, "14140"));
-        String chan = System.getProperty(c_jvm_arg_ibmmq_chan, "DEV.ADMIN.SVRCONN");
+        String ccdt = System.getProperty(c_jvm_arg_ibmmq_ccdt, "file://./ccdt.json");
         String user = System.getProperty(c_jvm_arg_ibmmq_user, "admin");
         String pass = System.getProperty(c_jvm_arg_ibmmq_pass, "passw0rd");
 
-        Worker worker = new Worker(qmgr, host, port, chan, user, pass);
+        Worker worker = new Worker(qmgr, ccdt, user, pass);
 
         executorService.scheduleWithFixedDelay(
                 worker,
