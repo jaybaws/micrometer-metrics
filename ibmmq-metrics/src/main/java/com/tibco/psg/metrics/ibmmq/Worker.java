@@ -9,7 +9,6 @@ import com.ibm.mq.headers.pcf.PCFMessageAgent;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
 import java.io.IOException;
-import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -23,15 +22,24 @@ public class Worker implements Runnable {
 
     private final Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
     private final String qmgrName;
-    private final String ccdtUrl;
 
-    public Worker(String qmgr, String ccdt, String user, String pass) {
+    public Worker(String qmgr, String host, int port, String chan, String user, String pass, String sslCiph, boolean useMQCSP) {
         qmgrName = qmgr;
-        ccdtUrl = ccdt;
 
+        connectionProperties.put(CMQC.TRANSPORT_PROPERTY, CMQC.TRANSPORT_MQSERIES_CLIENT);
+        connectionProperties.put(CMQC.APPNAME_PROPERTY, "ibmmq-metrics");
+        connectionProperties.put(CMQC.CHANNEL_PROPERTY, chan);
+
+        connectionProperties.put(CMQC.HOST_NAME_PROPERTY, host);
+        connectionProperties.put(CMQC.PORT_PROPERTY, port);
+
+        connectionProperties.put(CMQC.USE_MQCSP_AUTHENTICATION_PROPERTY, useMQCSP);
         connectionProperties.put(CMQC.USER_ID_PROPERTY, user);
         connectionProperties.put(CMQC.PASSWORD_PROPERTY, pass);
-        connectionProperties.put(CMQC.USE_MQCSP_AUTHENTICATION_PROPERTY, true);
+
+        if (sslCiph != null) {
+            connectionProperties.put(CMQC.SSL_CIPHER_SUITE_PROPERTY, sslCiph);
+        }
 
         /**
          * Set up the global (composite) Metric registry. Provide the global config generically.
@@ -65,8 +73,7 @@ public class Worker implements Runnable {
         boolean succeeded = false;
 
         try {
-            URL ccdt = new URL(ccdtUrl);
-            MQQueueManager qMgr = new MQQueueManager(qmgrName, connectionProperties, ccdt);
+            MQQueueManager qMgr = new MQQueueManager(qmgrName, connectionProperties);
             PCFMessageAgent agent = new PCFMessageAgent(qMgr);
 
             doServer(qMgr, agent);
@@ -103,14 +110,12 @@ public class Worker implements Runnable {
                         name = name.trim();
 
                     int status = response.getIntParameterValue(CMQCFC.MQIACF_Q_MGR_STATUS);
-                    int archive_log_size = response.getIntParameterValue(CMQCFC.MQIACF_ARCHIVE_LOG_SIZE);
                     int chinit_status = response.getIntParameterValue(CMQCFC.MQIACF_CHINIT_STATUS);
                     int cmdserver_status = response.getIntParameterValue(CMQCFC.MQIACF_CMD_SERVER_STATUS);
                     int connection_count = response.getIntParameterValue(CMQCFC.MQIACF_CONNECTION_COUNT);
                     int ldap_connection_status = response.getIntParameterValue(CMQCFC.MQIACF_LDAP_CONNECTION_STATUS);
 
                     trackMetric("qmgr", "status", name).set(status);
-                    trackMetric("qmgr", "archive_log_size", name).set(archive_log_size);
                     trackMetric("qmgr", "chinit_status", name).set(chinit_status);
                     trackMetric("qmgr", "cmdserver_status", name).set(cmdserver_status);
                     trackMetric("qmgr", "connection_count", name).set(connection_count);
