@@ -106,34 +106,38 @@ public class Worker implements Runnable {
             if (this.getQueuesInfo) {
                 QueueInfo[] queueInfo = admin.getQueuesStatistics();
                 for (QueueInfo qi : queueInfo) {
-                    String queueName = qi.getName();
+                    if (!qi.isTemporary()) {
+                        String queueName = qi.getName();
 
-                    trackMetric("queue", "receiver_count", queueName).set(qi.getReceiverCount());
-                    trackMetric("queue", "delivered_message_count", queueName).set(qi.getDeliveredMessageCount());
-                    trackMetric("queue", "intransit_message_count", queueName).set(qi.getInTransitMessageCount());
+                        trackMetric("queue", "receiver_count", queueName).set(qi.getReceiverCount());
+                        trackMetric("queue", "delivered_message_count", queueName).set(qi.getDeliveredMessageCount());
+                        trackMetric("queue", "intransit_message_count", queueName).set(qi.getInTransitMessageCount());
 
-                    trackMetric("queue", "consumer_count", queueName).set(qi.getConsumerCount());
-                    trackMetric("queue", "pending_message_count", queueName).set(qi.getPendingMessageCount());
-                    trackMetric("queue", "pending_message_size", queueName).set(qi.getPendingMessageSize());
-                    trackMetric("queue", "pending_persistent_message_count", queueName).set(qi.getPendingPersistentMessageCount());
-                    trackMetric("queue", "pending_persistent_message_size", queueName).set(qi.getPendingPersistentMessageSize());
+                        trackMetric("queue", "consumer_count", queueName).set(qi.getConsumerCount());
+                        trackMetric("queue", "pending_message_count", queueName).set(qi.getPendingMessageCount());
+                        trackMetric("queue", "pending_message_size", queueName).set(qi.getPendingMessageSize());
+                        trackMetric("queue", "pending_persistent_message_count", queueName).set(qi.getPendingPersistentMessageCount());
+                        trackMetric("queue", "pending_persistent_message_size", queueName).set(qi.getPendingPersistentMessageSize());
+                    }
                 }
             }
 
             if (this.getTopicsInfo) {
                 TopicInfo[] topicInfo = admin.getTopicsStatistics();
                 for (TopicInfo ti : topicInfo) {
-                    String topicName = ti.getName();
+                    if (!ti.isTemporary()) {
+                        String topicName = ti.getName();
 
-                    trackMetric("topic", "subscriber_count", topicName).set(ti.getSubscriberCount());
-                    trackMetric("topic", "durable_count", topicName).set(ti.getDurableCount());
-                    trackMetric("topic", "active_durable_count", topicName).set(ti.getActiveDurableCount());
+                        trackMetric("topic", "subscriber_count", topicName).set(ti.getSubscriberCount());
+                        trackMetric("topic", "durable_count", topicName).set(ti.getDurableCount());
+                        trackMetric("topic", "active_durable_count", topicName).set(ti.getActiveDurableCount());
 
-                    trackMetric("topic", "consumer_count", topicName).set(ti.getConsumerCount());
-                    trackMetric("topic", "pending_message_count", topicName).set(ti.getPendingMessageCount());
-                    trackMetric("topic", "pending_message_size", topicName).set(ti.getPendingMessageSize());
-                    trackMetric("topic", "pending_persistent_message_count", topicName).set(ti.getPendingPersistentMessageCount());
-                    trackMetric("topic", "pending_persistent_message_size", topicName).set(ti.getPendingPersistentMessageSize());
+                        trackMetric("topic", "consumer_count", topicName).set(ti.getConsumerCount());
+                        trackMetric("topic", "pending_message_count", topicName).set(ti.getPendingMessageCount());
+                        trackMetric("topic", "pending_message_size", topicName).set(ti.getPendingMessageSize());
+                        trackMetric("topic", "pending_persistent_message_count", topicName).set(ti.getPendingPersistentMessageCount());
+                        trackMetric("topic", "pending_persistent_message_size", topicName).set(ti.getPendingPersistentMessageSize());
+                    }
                 }
             }
 
