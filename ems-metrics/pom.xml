@@ -114,4 +114,11 @@
       </plugin>
     </plugins>
   </build>
+  <repositories>
+    <repository>
+      <id>private</id>
+      <name>Private packages</name>
+      <url>https://maven.pkg.github.com/jaybaws/private</url>
+    </repository>
+  </repositories>
 </project>
