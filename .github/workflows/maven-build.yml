@@ -13,5 +13,8 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
+          server-id: private
+          settings-path: ${{ github.workspace }}
+
       - name: Build with Maven
-        run: mvn --batch-mode --update-snapshots package
+        run: mvn -s $GITHUB_WORKSPACE/settings.xml --batch-mode --update-snapshots package
