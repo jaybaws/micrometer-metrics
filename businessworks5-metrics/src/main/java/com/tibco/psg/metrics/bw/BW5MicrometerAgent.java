@@ -29,6 +29,9 @@ public class BW5MicrometerAgent implements NotificationListener {
 
     private static final String c_jvm_arg_method_prefix = c_jvm_arg_prefix + ".method";
 
+    private static final String c_jvm_arg_method_GetActivities_class_filter = c_jvm_arg_method_prefix + ".getactivities.classfilter";
+    private static final String c_default_GetActivities_class_filter = ".*(SOAP|JMS|JDBC|http|FTP|GenerateErrorActivity|CatchActivity|JavaActivity|MapperActivity).*";
+
     private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
 
     private final MBeanServerConnection server;
@@ -187,13 +190,15 @@ public class BW5MicrometerAgent implements NotificationListener {
                             TimeUnit.SECONDS
                     );
 
-                if (scheduleFor("getactivities"))
+                if (scheduleFor("getactivities")) {
+                    String filter = System.getProperty(c_jvm_arg_method_GetActivities_class_filter, c_default_GetActivities_class_filter);
                     executorService.scheduleWithFixedDelay(
-                            new GetActivitiesWorker(server, engineHandle),
+                            new GetActivitiesWorker(server, engineHandle, filter),
                             initDelayFor("getactivities"),
                             delayFor("getactivities"),
                             TimeUnit.SECONDS
                     );
+                }
 
                 LOGGER.info("Scheduled the workers!");
 
@@ -208,11 +213,11 @@ public class BW5MicrometerAgent implements NotificationListener {
     }
 
     private static boolean scheduleFor(String method) {
-        return Boolean.valueOf(System.getProperty(c_jvm_arg_method_prefix + ".enabled", "true"));
+        return Boolean.valueOf(System.getProperty(c_jvm_arg_method_prefix + "." + method + ".enabled", "true"));
     }
 
     private static int delayFor(String method) {
-        return Integer.valueOf(System.getProperty(c_jvm_arg_method_prefix + ".delay", "60"));
+        return Integer.valueOf(System.getProperty(c_jvm_arg_method_prefix + "." + method + ".delay", "60"));
     }
 
     private static int initDelayFor(String method) {

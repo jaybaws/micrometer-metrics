@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GetActivitiesWorker implements Runnable {
 
@@ -19,10 +21,14 @@ public class GetActivitiesWorker implements Runnable {
     private ObjectName objectName;
     private MBeanServerConnection mbsc;
     private Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
+    private String activityClassFilter;
+    private Pattern activityClassPattern;
 
-    public GetActivitiesWorker(MBeanServerConnection mbsc, ObjectName objectName) {
+    public GetActivitiesWorker(MBeanServerConnection mbsc, ObjectName objectName, String activityClassFilter) {
         this.mbsc = mbsc;
         this.objectName = objectName;
+        this.activityClassFilter = activityClassFilter;
+        this.activityClassPattern = Pattern.compile(activityClassFilter);
     }
 
     private AtomicLong metric(String processDefinitionName, String activityName, String activityClassName, String metricName) {
@@ -61,35 +67,38 @@ public class GetActivitiesWorker implements Runnable {
                     String activity = (String) resultItem.get("Name");
                     String activityClass = (String) resultItem.get("ActivityClass");
 
-                    long valExecutionCount = (Long) resultItem.get("ExecutionCount");
-                    metric(process, activity, activityClass, "bwengine.activity.executioncount").set(valExecutionCount);
+                    Matcher m = this.activityClassPattern.matcher(activityClass);
+                    if (m.matches()) {
+                        long valExecutionCount = (Long) resultItem.get("ExecutionCount");
+                        metric(process, activity, activityClass, "bwengine.activity.executioncount").set(valExecutionCount);
 
-                    long valElapsedTime = (Long) resultItem.get("ElapsedTime");
-                    metric(process, activity, activityClass, "bwengine.activity.elapsedtime").set(valElapsedTime);
+                        long valElapsedTime = (Long) resultItem.get("ElapsedTime");
+                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime").set(valElapsedTime);
 
-                    long valExecutionTime = (Long) resultItem.get("ExecutionTime");
-                    metric(process, activity, activityClass, "bwengine.activity.executiontime").set(valExecutionTime);
+                        long valExecutionTime = (Long) resultItem.get("ExecutionTime");
+                        metric(process, activity, activityClass, "bwengine.activity.executiontime").set(valExecutionTime);
 
-                    long valErrorCount = (Long) resultItem.get("ErrorCount");
-                    metric(process, activity, activityClass, "bwengine.activity.errorcount").set(valErrorCount);
+                        long valErrorCount = (Long) resultItem.get("ErrorCount");
+                        metric(process, activity, activityClass, "bwengine.activity.errorcount").set(valErrorCount);
 
-                    long valMinElapsedTime = (Long) resultItem.get("MinElapsedTime");
-                    metric(process, activity, activityClass, "bwengine.activity.elapsedtime_min").set(valMinElapsedTime);
+                        long valMinElapsedTime = (Long) resultItem.get("MinElapsedTime");
+                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime_min").set(valMinElapsedTime);
 
-                    long valMaxElapsedTime = (Long) resultItem.get("MaxElapsedTime");
-                    metric(process, activity, activityClass, "bwengine.activity.elapsedtime_max").set(valMaxElapsedTime);
+                        long valMaxElapsedTime = (Long) resultItem.get("MaxElapsedTime");
+                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime_max").set(valMaxElapsedTime);
 
-                    long valMinExecutionTime = (Long) resultItem.get("MinExecutionTime");
-                    metric(process, activity, activityClass, "bwengine.activity.executiontime_min").set(valMinExecutionTime);
+                        long valMinExecutionTime = (Long) resultItem.get("MinExecutionTime");
+                        metric(process, activity, activityClass, "bwengine.activity.executiontime_min").set(valMinExecutionTime);
 
-                    long valMaxExecutionTime = (Long) resultItem.get("MaxExecutionTime");
-                    metric(process, activity, activityClass, "bwengine.activity.executiontime_max").set(valMaxExecutionTime);
+                        long valMaxExecutionTime = (Long) resultItem.get("MaxExecutionTime");
+                        metric(process, activity, activityClass, "bwengine.activity.executiontime_max").set(valMaxExecutionTime);
 
-                    long valMostRecentElapsedTime = (Long) resultItem.get("MostRecentElapsedTime");
-                    metric(process, activity, activityClass, "bwengine.activity.elapsedtime_recent").set(valMostRecentElapsedTime);
+                        long valMostRecentElapsedTime = (Long) resultItem.get("MostRecentElapsedTime");
+                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime_recent").set(valMostRecentElapsedTime);
 
-                    long valMostRecentExecutionTime = (Long) resultItem.get("MostRecentExecutionTime");
-                    metric(process, activity, activityClass, "bwengine.activity.executiontime_recent").set(valMostRecentExecutionTime);
+                        long valMostRecentExecutionTime = (Long) resultItem.get("MostRecentExecutionTime");
+                        metric(process, activity, activityClass, "bwengine.activity.executiontime_recent").set(valMostRecentExecutionTime);
+                    }
                 }
             }
         } catch (Throwable t) {
