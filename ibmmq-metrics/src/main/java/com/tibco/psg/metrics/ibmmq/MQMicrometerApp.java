@@ -31,7 +31,7 @@ public class MQMicrometerApp {
 
         String qmgr = System.getProperty(c_jvm_arg_ibmmq_qmgr, "QMGR");
         String host = System.getProperty(c_jvm_arg_ibmmq_host, "localhost");
-        int port = Integer.valueOf(System.getProperty(c_jvm_arg_ibmmq_port, "1414"));
+        int port = Integer.valueOf(System.getProperty(c_jvm_arg_ibmmq_port, "14140"));
         String chan = System.getProperty(c_jvm_arg_ibmmq_chan, "DEV.ADMIN.SVRCONN");
         String user = System.getProperty(c_jvm_arg_ibmmq_user, "admin");
         String pass = System.getProperty(c_jvm_arg_ibmmq_pass, "passw0rd");

@@ -149,9 +149,13 @@ public class Worker implements Runnable {
                     int q_open_input_count = response.getIntParameterValue(CMQC.MQIA_OPEN_INPUT_COUNT);
                     int q_open_output_count = response.getIntParameterValue(CMQC.MQIA_OPEN_OUTPUT_COUNT);
 
-                    trackMetric("qlocal", "depth", name).set(q_depth);
-                    trackMetric("qlocal", "open_input_count", name).set(q_open_input_count);
-                    trackMetric("qlocal", "open_output_count", name).set(q_open_output_count);
+                    int type = response.getIntParameterValue(CMQC.MQIA_DEFINITION_TYPE);
+
+                    if (type == 1) { // This filters out all the AMQ.* crap that will blow up your registry!
+                        trackMetric("qlocal", "depth", name).set(q_depth);
+                        trackMetric("qlocal", "open_input_count", name).set(q_open_input_count);
+                        trackMetric("qlocal", "open_output_count", name).set(q_open_output_count);
+                    }
                 }
             }
         } catch (PCFException e) {
