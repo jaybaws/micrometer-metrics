@@ -104,7 +104,7 @@ public class Worker implements Runnable {
             }
 
             if (this.getQueuesInfo) {
-                QueueInfo[] queueInfo = admin.getQueuesStatistics();
+                QueueInfo[] queueInfo = admin.getQueues();
                 for (QueueInfo qi : queueInfo) {
                     if (!qi.isTemporary()) {
                         String queueName = qi.getName();
@@ -123,7 +123,7 @@ public class Worker implements Runnable {
             }
 
             if (this.getTopicsInfo) {
-                TopicInfo[] topicInfo = admin.getTopicsStatistics();
+                TopicInfo[] topicInfo = admin.getTopics();
                 for (TopicInfo ti : topicInfo) {
                     if (!ti.isTemporary()) {
                         String topicName = ti.getName();
