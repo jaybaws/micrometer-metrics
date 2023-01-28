@@ -118,6 +118,22 @@ public class Worker implements Runnable {
                         trackMetric("queue", "pending_message_size", queueName).set(qi.getPendingMessageSize());
                         trackMetric("queue", "pending_persistent_message_count", queueName).set(qi.getPendingPersistentMessageCount());
                         trackMetric("queue", "pending_persistent_message_size", queueName).set(qi.getPendingPersistentMessageSize());
+
+                        StatData in_stats = qi.getInboundStatistics();
+                        if (in_stats != null) {
+                            trackMetric("queue", "inbound_message_rate", queueName).set(in_stats.getMessageRate());
+                            trackMetric("queue", "inbound_bytes_rate", queueName).set(in_stats.getByteRate());
+                            trackMetric("queue", "inbound_total_messages", queueName).set(in_stats.getTotalMessages());
+                            trackMetric("queue", "inbound_total_bytes", queueName).set(in_stats.getTotalBytes());
+                        }
+
+                        StatData out_stats = qi.getOutboundStatistics();
+                        if (out_stats != null) {
+                            trackMetric("queue", "outbound_message_rate", queueName).set(out_stats.getMessageRate());
+                            trackMetric("queue", "outbound_bytes_rate", queueName).set(out_stats.getByteRate());
+                            trackMetric("queue", "outbound_total_messages", queueName).set(out_stats.getTotalMessages());
+                            trackMetric("queue", "outbound_total_bytes", queueName).set(out_stats.getTotalBytes());
+                        }
                     }
                 }
             }
@@ -137,6 +153,22 @@ public class Worker implements Runnable {
                         trackMetric("topic", "pending_message_size", topicName).set(ti.getPendingMessageSize());
                         trackMetric("topic", "pending_persistent_message_count", topicName).set(ti.getPendingPersistentMessageCount());
                         trackMetric("topic", "pending_persistent_message_size", topicName).set(ti.getPendingPersistentMessageSize());
+
+                        StatData in_stats = ti.getInboundStatistics();
+                        if (in_stats != null) {
+                            trackMetric("topic", "inbound_message_rate", topicName).set(in_stats.getMessageRate());
+                            trackMetric("topic", "inbound_bytes_rate", topicName).set(in_stats.getByteRate());
+                            trackMetric("topic", "inbound_total_messages", topicName).set(in_stats.getTotalMessages());
+                            trackMetric("topic", "inbound_total_bytes", topicName).set(in_stats.getTotalBytes());
+                        }
+
+                        StatData out_stats = ti.getOutboundStatistics();
+                        if (out_stats != null) {
+                            trackMetric("topic", "outbound_message_rate", topicName).set(out_stats.getMessageRate());
+                            trackMetric("topic", "outbound_bytes_rate", topicName).set(out_stats.getByteRate());
+                            trackMetric("topic", "outbound_total_messages", topicName).set(out_stats.getTotalMessages());
+                            trackMetric("topic", "outbound_total_bytes", topicName).set(out_stats.getTotalBytes());
+                        }
                     }
                 }
             }
