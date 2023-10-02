@@ -155,6 +155,16 @@ public class Worker implements Runnable {
                         trackMetric("qlocal", "depth", name).set(q_depth);
                         trackMetric("qlocal", "open_input_count", name).set(q_open_input_count);
                         trackMetric("qlocal", "open_output_count", name).set(q_open_output_count);
+
+                        if (response.getParameterValue(CMQC.MQIA_MSG_DEQ_COUNT) != null) {
+                            int q_dequeue_count = response.getIntParameterValue(CMQC.MQIA_MSG_DEQ_COUNT);
+                            trackMetric("qlocal", "dequeued_messages", name).set(q_dequeue_count);
+                        }
+
+                        if (response.getParameterValue(CMQC.MQIA_MSG_ENQ_COUNT) != null) {
+                            int q_enqueue_count = response.getIntParameterValue(CMQC.MQIA_MSG_ENQ_COUNT);
+                            trackMetric("qlocal", "enqueued_messages", name).set(q_enqueue_count);
+                        }
                     }
                 }
             }
