@@ -22,6 +22,8 @@
     <module>businessworks5-metrics</module>
     <module>ems-metrics</module>
     <module>ibmmq-metrics</module>
+	<module>process-metrics</module>
+	<module>socket-metrics</module>
   </modules>
 
   <distributionManagement>
