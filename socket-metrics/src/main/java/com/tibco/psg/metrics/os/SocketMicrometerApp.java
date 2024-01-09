@@ -1,11 +1,11 @@
 package com.tibco.psg.metrics.os;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class SocketMicrometerApp {
 
@@ -22,24 +22,42 @@ public class SocketMicrometerApp {
     public static void main(String[] args) {
         LOGGER.info("Starting OS Sockets Micrometer metrics application...");
 
-        String ports = System.getProperty(c_jvm_arg_ports, "");
-        List<Integer> port_ints = Arrays.stream(ports.split("\\s"))
-                .map(Integer::parseInt)
-                .collect(Collectors.toList());
+        String ports = System.getProperty(c_jvm_arg_ports, "443,10400-10499");
+        List<Integer> port_ints = new ArrayList<Integer>();
 
-        if (port_ints.size() > 0) {
-            Worker worker = new Worker(port_ints);
+        try {
+            for (String s : ports.split(",")) {
+                if (s.contains("-")) {
+                    String[] range = s.split("-");
+                    int begin = Integer.parseInt(range[0]);
+                    int end = Integer.parseInt(range[1]);
+                    for (int i = begin; i <= end; i++) {
+                        port_ints.add(i);
+                    }
+                } else {
+                    port_ints.add(Integer.parseInt(s));
+                }
+            }
 
-            executorService.scheduleWithFixedDelay(
-                    worker,
-                    0,
-                    60,
-                    TimeUnit.SECONDS
-            );
+            LOGGER.info(String.format("Parsed ports: %s.", port_ints.toString()));
 
-            LOGGER.info("Worker scheduled!");
-        } else {
-            LOGGER.warning("No port numbers were provided. Nothing to do!");
+            if (port_ints.size() > 0) {
+                Worker worker = new Worker(port_ints);
+
+                executorService.scheduleWithFixedDelay(
+                        worker,
+                        0,
+                        60,
+                        TimeUnit.SECONDS
+                );
+
+                LOGGER.info("Worker scheduled!");
+            } else {
+                LOGGER.warning("No port numbers were provided. Nothing to do!");
+            }
+
+        } catch (NumberFormatException e) {
+            LOGGER.log(Level.SEVERE,String.format("Unable to parse the provided port number(s): '%s'. Exiting!", ports), e);
         }
     }
 }
