@@ -21,7 +21,8 @@ jobs:
 
       - uses: s4u/maven-settings-action@v3.1.0
         with:
-          servers: [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ github.token }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ github.token }}" }]
+          servers: |
+            [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ github.token }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ github.token }}" }]
 
       - name: Build with Maven
         run: mvn -s $GITHUB_WORKSPACE/settings.xml --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
