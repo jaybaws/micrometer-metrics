@@ -8,7 +8,7 @@
 	<name>micrometer-metrics</name>
 	<url>https://github.com/jaybaws/micrometer-metrics</url>
 	<properties>
-		<revision>1.0.0-SNAPSHOT</revision>
+		<revision>2.0.0-SNAPSHOT</revision>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
