@@ -16,10 +16,14 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
-          server-id: private
+          server-id: 'private'
           settings-path: ${{ github.workspace }}
 
+      - uses: s4u/maven-settings-action@v3.1.0
+        with:
+          servers: [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ github.token }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ github.token }}" }]
+
       - name: Build with Maven
-        run: mvn -s $GITHUB_WORKSPACE/settings.xml --no-transfer-progress -V -U -X --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
+        run: mvn -s $GITHUB_WORKSPACE/settings.xml --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
         env:
           GITHUB_TOKEN: ${{ github.token }}
