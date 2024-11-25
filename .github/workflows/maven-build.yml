@@ -14,29 +14,13 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
-          # server-id: 'private'
-          # server-password: PRIVATE_TOKEN
-          # settings-path: ${{ github.workspace }}
-
-      - name: Generate a token
-        id: generate-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: 1069430
-          private-key: ${{ secrets.JAYBAWS_CI_PKEY }}
-          owner: ${{ github.repository_owner }}
 
       - uses: s4u/maven-settings-action@v3.1.0
         with:
           githubServer: false
           servers: |
-            [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ secrets.THE_TOKEN }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ steps.generate-token.outputs.token }}" }]
+            [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ secrets.THE_TOKEN }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ secrets.THE_TOKEN }}" }]
 
       - name: Build with Maven
         run: |
-          cat /home/runner/.m2/settings.xml
-          echo -n '${{ steps.generate-token.outputs.token }}' | base64
-          mvn -s /home/runner/.m2/settings.xml --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
-        # env:
-        #   PRIVATE_TOKEN: ${{ steps.generate-token.outputs.token }}
- 
+          mvn --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
