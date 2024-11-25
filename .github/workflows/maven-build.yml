@@ -25,6 +25,7 @@ jobs:
 
       - name: Build with Maven
         run: |
+          set -e
           echo ACTOR: '${{ github.actor }}'.
           echo TOKEN: '${{ github.token }}'.
           echo w00t
