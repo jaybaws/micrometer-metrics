@@ -21,17 +21,18 @@ jobs:
 
       - uses: s4u/maven-settings-action@v3.1.0
         with:
+          githubServer: false
           servers: |
-            [ { "id": "private", "username": "${{ github.actor }}", "password": "${{ github.token }}" } ]
+            [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ github.token }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ github.token }}" }]
 
       - name: Build with Maven
         run: |
-          echo ACTOR: ${{ github.actor }}
-          echo TOKEN: ${{ github.token }}
+          echo ACTOR: '${{ github.actor }}'.
+          echo TOKEN: '${{ github.token }}'.
           echo w00t
+          
           cat /home/runner/.m2/settings.xml
+          
           echo bl44t
+          
           mvn --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ github.token }}
