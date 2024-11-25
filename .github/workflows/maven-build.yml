@@ -35,4 +35,4 @@ jobs:
           
           echo bl44t
           
-          mvn --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
+          mvn -s /home/runner/.m2/settings.xml --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
