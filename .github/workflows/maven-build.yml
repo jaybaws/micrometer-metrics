@@ -5,9 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
+    permissions: read-all
 
     steps:
       - uses: actions/checkout@v4
