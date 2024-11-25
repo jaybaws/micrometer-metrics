@@ -20,6 +20,6 @@ jobs:
           settings-path: ${{ github.workspace }}
 
       - name: Build with Maven
-        run: mvn -s $GITHUB_WORKSPACE/settings.xml --no-transfer-progress -V --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
+        run: mvn -s $GITHUB_WORKSPACE/settings.xml --no-transfer-progress -V -U -X --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
         env:
           GITHUB_TOKEN: ${{ github.token }}
