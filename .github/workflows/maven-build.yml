@@ -34,9 +34,7 @@ jobs:
 
       - name: Build with Maven
         run: |
-          cat ${{ github.workspace }}/settings.xml
-          echo woei!
-          mvn -s ${{ github.workspace }}/settings.xml --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
+          mvn --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
         # env:
         #   PRIVATE_TOKEN: ${{ steps.generate-token.outputs.token }}
  
