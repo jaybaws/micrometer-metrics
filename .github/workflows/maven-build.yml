@@ -14,15 +14,9 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
-          server-id: 'private'
-          server-password: PRIVATE_TOKEN
-          settings-path: ${{ github.workspace }}
-
-      # - uses: s4u/maven-settings-action@v3.1.0
-      #   with:
-      #     githubServer: false
-      #     servers: |
-      #       [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ secrets.THE_TOKEN }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ secrets.THE_TOKEN }}" }]
+          # server-id: 'private'
+          # server-password: PRIVATE_TOKEN
+          # settings-path: ${{ github.workspace }}
 
       - name: Generate a token
         id: generate-token
@@ -32,11 +26,17 @@ jobs:
           private-key: ${{ secrets.JAYBAWS_CI_PKEY }}
           owner: ${{ github.repository_owner }}
 
+      - uses: s4u/maven-settings-action@v3.1.0
+        with:
+          githubServer: false
+          servers: |
+            [{ "id": "github", "username": "${{ github.actor }}", "password": "${{ secrets.THE_TOKEN }}" }, { "id": "private", "username": "${{ github.actor }}", "password": "${{ steps.generate-token.outputs.token }}" }]
+
       - name: Build with Maven
         run: |
           cat ${{ github.workspace }}/settings.xml
           echo woei!
           mvn -s ${{ github.workspace }}/settings.xml --no-transfer-progress --update-snapshots -Djansi.force=true -Dstyle.color=always clean package
-        env:
-          PRIVATE_TOKEN: ${{ steps.generate-token.outputs.token }}
+        # env:
+        #   PRIVATE_TOKEN: ${{ steps.generate-token.outputs.token }}
  
