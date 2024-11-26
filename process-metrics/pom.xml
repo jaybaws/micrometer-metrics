@@ -99,7 +99,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>com.tibco.psg.metrics.os.ProcessMicrometerApp</mainClass>
+							<mainClass>org.jaybaws.metrics.os.ProcessMicrometerApp</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

@@ -92,7 +92,7 @@
             <manifest>
               <addClasspath>true</addClasspath>
               <classpathPrefix>lib/</classpathPrefix>
-              <mainClass>com.tibco.psg.metrics.ibmmq.MQMicrometerApp</mainClass>
+              <mainClass>org.jaybaws.metrics.ibmmq.MQMicrometerApp</mainClass>
             </manifest>
           </archive>
         </configuration>

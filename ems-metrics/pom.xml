@@ -93,7 +93,7 @@
             <manifest>
               <addClasspath>true</addClasspath>
               <classpathPrefix>lib/</classpathPrefix>
-              <mainClass>com.tibco.psg.metrics.ems.EMSMicrometerApp</mainClass>
+              <mainClass>org.jaybaws.metrics.ems.EMSMicrometerApp</mainClass>
             </manifest>
             <manifestEntries>
               <Class-Path>lib/jms-2.0.jar lib/tibjms.jar lib/tibjmsadmin.jar</Class-Path>
