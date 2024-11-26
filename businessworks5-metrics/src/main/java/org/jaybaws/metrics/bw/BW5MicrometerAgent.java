@@ -82,9 +82,10 @@ public class BW5MicrometerAgent implements NotificationListener {
          * Set up the global (composite) Metric registry. Provide the global config generically.
          */
         Metrics.globalRegistry.config().commonTags(
-                "domain", domain,
-                "application", application,
-                "instance", instance
+                "tib_tech", "bw5",
+                "tib_domain", domain,
+                "tib_app", application,
+                "tib_par", instance
         );
 
         /**
