@@ -74,31 +74,31 @@ By default, all engines are enriched by tags to indicates to which BusinessWorks
 
 ## Configuration options
 
-`com.tibco.psg.metrics.bw.loglevel`: the default log-level of the agent. Defaults to `INFO`. Configure any level that can be parsed by [JUL Level](https://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html)
+`org.jaybaws.metrics.bw.loglevel`: the default log-level of the agent. Defaults to `INFO`. Configure any level that can be parsed by [JUL Level](https://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html)
 
-`com.tibco.psg.metrics.bw.smartinstrument`: *experimental*
+`org.jaybaws.metrics.bw.smartinstrument`: *experimental*
 
-`com.tibco.psg.metrics.bw.bwengine.domain`: can be used to override the `domain` tag of all metrics.
+`org.jaybaws.metrics.bw.bwengine.domain`: can be used to override the `domain` tag of all metrics.
 
-`com.tibco.psg.metrics.bw.bwengine.application`: can be used to override the `application` tag of all metrics.
+`org.jaybaws.metrics.bw.bwengine.application`: can be used to override the `application` tag of all metrics.
 
-`com.tibco.psg.metrics.bw.bwengine.instance`: can be used to override the `instance` tag of all metrics.
+`org.jaybaws.metrics.bw.bwengine.instance`: can be used to override the `instance` tag of all metrics.
 
-`com.tibco.psg.metrics.bw.method.`<method(lowercase)>`.[`enabled`|`delay`|`initdelay`]
+`org.jaybaws.metrics.bw.method.`<method(lowercase)>`.[`enabled`|`delay`|`initdelay`]
 
-`com.tibco.psg.metrics.bw.method.getexecinfo.[enabled|delay|initdelay]`
+`org.jaybaws.metrics.bw.method.getexecinfo.[enabled|delay|initdelay]`
 
-`com.tibco.psg.metrics.bw.method.getmemoryusage.[enabled|delay|initdelay]`
+`org.jaybaws.metrics.bw.method.getmemoryusage.[enabled|delay|initdelay]`
 
-`com.tibco.psg.metrics.bw.method.getprocesscount.[enabled|delay|initdelay]`
+`org.jaybaws.metrics.bw.method.getprocesscount.[enabled|delay|initdelay]`
 
-`com.tibco.psg.metrics.bw.method.getactiveprocesscount.[enabled|delay|initdelay]`
+`org.jaybaws.metrics.bw.method.getactiveprocesscount.[enabled|delay|initdelay]`
 
-`com.tibco.psg.metrics.bw.method.getprocessstarters.[enabled|delay|initdelay]`
+`org.jaybaws.metrics.bw.method.getprocessstarters.[enabled|delay|initdelay]`
 
-`com.tibco.psg.metrics.bw.method.getprocessdefinitions.[enabled|delay|initdelay]`
+`org.jaybaws.metrics.bw.method.getprocessdefinitions.[enabled|delay|initdelay]`
 
-`com.tibco.psg.metrics.bw.method.getactivities.[enabled|delay|initdelay]`
+`org.jaybaws.metrics.bw.method.getactivities.[enabled|delay|initdelay]`
 
 
 ### Configure for Azure Application Insights

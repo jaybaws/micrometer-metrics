@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.tibco.psg.metrics</groupId>
+    <groupId>org.jaybaws.metrics</groupId>
     <artifactId>micrometer-metrics</artifactId>
     <version>${revision}</version>
     <relativePath>../pom.xml</relativePath>
@@ -18,6 +18,19 @@
       <version>2.17.1</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-api</artifactId>
+      <version>1.21.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk</artifactId>
+      <version>1.21.0</version>
+      <scope>provided</scope>
+    </dependency>
+
 
     <dependency>
       <groupId>io.micrometer</groupId>

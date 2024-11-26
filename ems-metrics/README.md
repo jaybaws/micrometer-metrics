@@ -19,19 +19,19 @@ By default, all engines are enriched by tags to indicates to EMS server:
 ## Configuration options
 The following JVM arguments can be passed into the application:
 
-`com.tibco.psg.metrics.ems.user`: specify the (admin) user to connect with. Defaults to `admin`.
+`org.jaybaws.metrics.ems.user`: specify the (admin) user to connect with. Defaults to `admin`.
 
-`com.tibco.psg.metrics.ems.password`: specify the (admin) user's password.
+`org.jaybaws.metrics.ems.password`: specify the (admin) user's password.
 
-`com.tibco.psg.metrics.ems.url`: the (direct) URL to connect to. Defaults to `tcp://localhost:7222`
+`org.jaybaws.metrics.ems.url`: the (direct) URL to connect to. Defaults to `tcp://localhost:7222`
 
-`com.tibco.psg.metrics.ems.serverinfo`: boolean to indicate whether or not to retrieve server info metrics. Defaults to `true`.
+`org.jaybaws.metrics.ems.serverinfo`: boolean to indicate whether or not to retrieve server info metrics. Defaults to `true`.
 
-`com.tibco.psg.metrics.ems.queueinfo`: boolean to indicate whether or not to retrieve metrics for each queue. Defaults to `true`.
+`org.jaybaws.metrics.ems.queueinfo`: boolean to indicate whether or not to retrieve metrics for each queue. Defaults to `true`.
 
-`com.tibco.psg.metrics.ems.topicinfo`: boolean to indicate whether or not to retrieve metrics for each topic. Defaults to `false`.
+`org.jaybaws.metrics.ems.topicinfo`: boolean to indicate whether or not to retrieve metrics for each topic. Defaults to `false`.
 
-`com.tibco.psg.metrics.ems.durableinfo`: boolean to indicate whether or not to retrieve metrics for each durable. Defaults to `false`.
+`org.jaybaws.metrics.ems.durableinfo`: boolean to indicate whether or not to retrieve metrics for each durable. Defaults to `false`.
 
 ### Configure for Azure Application Insights
 
@@ -60,9 +60,9 @@ From the directory where you installed `ems-metrics-${version}.jar`, run the fol
 ```
 java \
   -javaagent:/home/tibco/applicationinsights-agent-3.4.0.jar \
-  -Dcom.tibco.psg.metrics.ems.user=${user} \
-  -Dcom.tibco.psg.metrics.ems.password=${password} \
-  -Dcom.tibco.psg.metrics.ems.url="tcp://${host}:${port}" \
+  -Dorg.jaybaws.metrics.ems.user=${user} \
+  -Dorg.jaybaws.metrics.ems.password=${password} \
+  -Dorg.jaybaws.metrics.ems.url="tcp://${host}:${port}" \
   -Dapplicationinsights.role.name=ems-micrometer-metrics \
   -jar ./ems-metrics-${version}.jar \
 ```

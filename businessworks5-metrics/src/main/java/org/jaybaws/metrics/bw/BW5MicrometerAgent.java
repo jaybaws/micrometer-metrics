@@ -57,7 +57,7 @@ public class BW5MicrometerAgent implements NotificationListener {
         /**
          * Allow for smart instrumentation
          */
-        String smartInstrument = System.getProperty(c_jvm_arg_smart_instrument, "");
+        String smartInstrument = System.getProperty(c_jvm_arg_smart_instrument, "otlp");
         SmartInstrumenter.prepare(smartInstrument);
         LOGGER.info(String.format("Ran smart-instrumentation for '%s'.", smartInstrument));
 

@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>com.tibco.psg.metrics</groupId>
+		<groupId>org.jaybaws.metrics</groupId>
 		<artifactId>micrometer-metrics</artifactId>
 		<version>${revision}</version>
 		<relativePath>../pom.xml</relativePath>

@@ -4,6 +4,11 @@ import java.io.FileInputStream;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.registry.otlp.*;
+
 
 public class SmartInstrumenter {
 
@@ -21,15 +26,28 @@ public class SmartInstrumenter {
 
     public static void prepare(String type) {
         switch (type) {
-            case "":
-                break;
+            case "otlp":
+                prepareOTLP();
             case "azure-application-insights":
                 prepareAzureApplicationInsights();
                 break;
             default:
-                LOGGER.log(Level.WARNING, String.format("Provided type `%s` not recognized. Valid arguments are ['azure-application-insights']. No smart instrumentation will be done!", type));
+                LOGGER.log(Level.WARNING, String.format("Provided type `%s` not recognized. Valid arguments are ['azure-application-insights', 'otlp']. No smart instrumentation will be done!", type));
                 break;
         }
+    }
+
+    private static void prepareOTLP() {
+        OtlpConfig otlpConfig = new OtlpConfig() {
+            @Override
+            public String get(final String key) {
+                return null;
+            }
+        };
+
+        MeterRegistry registry = new OtlpMeterRegistry(otlpConfig, Clock.SYSTEM);
+        Metrics.addRegistry(registry);
+
     }
 
     private static void prepareAzureApplicationInsights() {
