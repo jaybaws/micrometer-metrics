@@ -16,4 +16,16 @@ public class BW5MicrometerAgentTest
         assertTrue( true );
     }
 
+    @Test
+    public void myStringCompareTest() {
+        String a = "com.tibco.bw:key=engine,name=\"PortSmokeTester-PortSmokeTester_LB\"";
+        assertTrue(a.startsWith("com.tibco.bw:key=engine"));
+    }
+
+    @Test
+    public void myStringLengthTest() {
+        String a = "com.tibco.bw";
+        assertTrue(a.length() == 12);
+    }
+
 }

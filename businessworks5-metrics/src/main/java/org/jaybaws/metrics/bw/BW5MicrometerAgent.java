@@ -17,6 +17,8 @@ public class BW5MicrometerAgent implements NotificationListener {
     private static final String c_jvm_arg_jmx = "Jmx.Enabled";
     private static final int c_executorService_corePoolSize = 10;
 
+    private static final String c_mbean_domain = "com.tibco.bw";
+
     private static final String c_jvm_arg_prefix = BW5MicrometerAgent.class.getPackage().getName();
 
     private static final String c_jvm_arg_logLevel = c_jvm_arg_prefix + ".logLevel";
@@ -65,6 +67,7 @@ public class BW5MicrometerAgent implements NotificationListener {
          * Get the MBeanServer where the bwengine's MBean will be hosted. It will be in the default one (platformMBeanServer)
          */
         server = ManagementFactory.getPlatformMBeanServer();
+        MBeanServerFactory.findMBeanServer(null);
 
         /**
          * Determine the <prefix> from the JVM properties, and determine <domain>, <application>
@@ -102,15 +105,16 @@ public class BW5MicrometerAgent implements NotificationListener {
          * To assure this is the case, we inject the 'Jmx.Enabled=true' JVM argument.
          *
          */
-        MBeanServerNotificationFilter filter = new MBeanServerNotificationFilter();
-        filter.enableAllObjectNames();
 
         try {
             /**
              * Register ourselves as a listener for MBeans, so we can pick up the bwengine's HMA!
              */
-            server.addNotificationListener(MBeanServerDelegate.DELEGATE_NAME, this, filter, null);
+            MBeanServerNotificationFilter filter = new MBeanServerNotificationFilter();
+            // filter.enableObjectName(new ObjectName("com.tibco.bw:key=engine,*"));
+            filter.enableAllObjectNames();
 
+            server.addNotificationListener(MBeanServerDelegate.DELEGATE_NAME, this, filter, null);
             /**
              * Force the bwengine to enable JMX, otherwise our plan dies in vain...
              */
@@ -125,11 +129,12 @@ public class BW5MicrometerAgent implements NotificationListener {
     @Override
     public void handleNotification(Notification notification, Object handback) {
         MBeanServerNotification mbs = (MBeanServerNotification) notification;
+        String domain = mbs.getMBeanName().getDomain();
 
         /**
          * We only want to react to the BWEngine (PEMain) MBean, not anything else (like Tomcat MBeans, etc.).
          */
-        if (mbs.getMBeanName().getDomain().equals("com.tibco.bw")) {
+        if (domain.equals(c_mbean_domain)) {
             if (MBeanServerNotification.REGISTRATION_NOTIFICATION.equals(mbs.getType())) {
                 LOGGER.info("Caught the bwengine's HMA MBean [" + mbs.getMBeanName() + "]");
                 engineHandle = mbs.getMBeanName();

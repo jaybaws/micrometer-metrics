@@ -28,6 +28,7 @@ public class SmartInstrumenter {
         switch (type) {
             case "otlp":
                 prepareOTLP();
+                break;
             case "azure-application-insights":
                 prepareAzureApplicationInsights();
                 break;
