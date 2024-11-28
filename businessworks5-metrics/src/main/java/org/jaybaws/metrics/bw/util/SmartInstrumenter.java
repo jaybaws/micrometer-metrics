@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.registry.otlp.*;
+import org.jaybaws.metrics.bw.BW5MicrometerAgent;
 
 
 public class SmartInstrumenter {
@@ -22,7 +23,7 @@ public class SmartInstrumenter {
      */
     private static final String cDisplayNameProp = "Hawk.AMI.DisplayName";
 
-    private static final Logger LOGGER = Logger.getLogger(SmartInstrumenter.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
 
     public static void prepare(String type) {
         switch (type) {
@@ -42,7 +43,17 @@ public class SmartInstrumenter {
         OtlpConfig otlpConfig = new OtlpConfig() {
             @Override
             public String get(final String key) {
-                return null;
+                String msg = String.format("otlpConfig queried key '%s'.", key);
+                LOGGER.log(Level.CONFIG, msg);
+                
+                switch (key) {
+                    case "otlp.resourceAttributes":
+                        String attr = System.getProperty("otel.resource.attributes", null);
+                        System.out.println(String.format("======> PASSED resource attributes: '%s'.", attr));
+                        return attr;
+                    default:
+                        return null;
+                }
             }
         };
 

@@ -1,4 +1,6 @@
 package org.jaybaws.metrics.bw;
+import io.opentelemetry.api.OpenTelemetry;
+import org.jaybaws.metrics.bw.metrics.JVM;
 import org.jaybaws.metrics.bw.util.SmartInstrumenter;
 import org.jaybaws.metrics.bw.workers.*;
 import org.jaybaws.metrics.bw.util.BWUtils;
@@ -10,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.*;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 
 public class BW5MicrometerAgent implements NotificationListener {
 
@@ -40,6 +43,8 @@ public class BW5MicrometerAgent implements NotificationListener {
     private ObjectName engineHandle;
     private ScheduledExecutorService executorService;
 
+    private OpenTelemetry otelSdk;
+
     @SuppressWarnings("unused")
     public static void premain(String agentArgs) {
         if (BWUtils.isBusinessWorksEngine()) {
@@ -47,7 +52,7 @@ public class BW5MicrometerAgent implements NotificationListener {
             BW5MicrometerAgent bridge = new BW5MicrometerAgent();
             LOGGER.info("End of instrumentation!");
         } else {
-            LOGGER.warning("JVM does not look like a BusinessWorks engine. Exiting and not instrumenting...");
+            LOGGER.warning("JVM does not look like a BusinessWorks engine... Leaving it as it is!");
         }
     }
 
@@ -55,6 +60,11 @@ public class BW5MicrometerAgent implements NotificationListener {
         String level = System.getProperty(c_jvm_arg_logLevel, c_defaultLogLevel);
         LOGGER.setLevel(Level.parse(level));
         LOGGER.info(String.format("Set logLevel to '%s'.", level));
+
+        /**
+         * Grab us an OpenTelemetry SDK
+         */
+        this.otelSdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
 
         /**
          * Allow for smart instrumentation
@@ -68,6 +78,9 @@ public class BW5MicrometerAgent implements NotificationListener {
          */
         server = ManagementFactory.getPlatformMBeanServer();
         MBeanServerFactory.findMBeanServer(null);
+
+
+
 
         /**
          * Determine the <prefix> from the JVM properties, and determine <domain>, <application>
@@ -138,6 +151,8 @@ public class BW5MicrometerAgent implements NotificationListener {
             if (MBeanServerNotification.REGISTRATION_NOTIFICATION.equals(mbs.getType())) {
                 LOGGER.info("Caught the bwengine's HMA MBean [" + mbs.getMBeanName() + "]");
                 engineHandle = mbs.getMBeanName();
+
+                JVM.instrument(this.otelSdk);
 
                 /**
                  * Only construct the ScheduledExecutorService when needed. Also, we may need to recreate it if
@@ -233,17 +248,35 @@ public class BW5MicrometerAgent implements NotificationListener {
          * By default, avoid having all the load at the same time.
          */
         switch (method) {
-            case "getexecinfo": defaultValue = "5"; break;
-            case "getmemoryusage": defaultValue = "10"; break;
-            case "getprocesscount": defaultValue = "15"; break;
-            case "getactiveprocesscount": defaultValue = "20"; break;
-            case "getprocessstarters": defaultValue = "25"; break;
-            case "getprocessdefinitions": defaultValue = "30"; break;
-            case "getactivities": defaultValue = "35"; break;
-            default: defaultValue = "0"; break;
+            case "getexecinfo":
+                defaultValue = "5";
+                break;
+            case "getmemoryusage":
+                defaultValue = "10";
+                break;
+            case "getprocesscount":
+                defaultValue = "15";
+                break;
+            case "getactiveprocesscount":
+                defaultValue = "20";
+                break;
+            case "getprocessstarters":
+                defaultValue = "25";
+                break;
+            case "getprocessdefinitions":
+                defaultValue = "30";
+                break;
+            case "getactivities":
+                defaultValue = "35";
+                break;
+            case "jvm":
+                defaultValue = "40";
+                break;
+            default:
+                defaultValue = "0";
+                break;
         }
 
         return Integer.valueOf(System.getProperty(c_jvm_arg_method_prefix + ".initdelay", defaultValue));
     }
-
 }
