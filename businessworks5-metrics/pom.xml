@@ -43,6 +43,7 @@
       <scope>provided</scope>
     </dependency>
 
+    <!--
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
@@ -52,7 +53,7 @@
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-otlp</artifactId>
       <version>${micrometer.version}</version>
-    </dependency>
+    </dependency> -->
 
     <dependency>
       <groupId>junit</groupId>
@@ -141,7 +142,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <relocations>
+              <!--<relocations>
                 <relocation>
                   <pattern>org</pattern>
                   <shadedPattern>shaded.org</shadedPattern>
@@ -167,7 +168,7 @@
                   <pattern>opentelemetry</pattern>
                   <shadedPattern>shaded.opentelemetry</shadedPattern>
                 </relocation>
-              </relocations>
+              </relocations>-->
               <filters>
                 <filter>
                   <artifact>*:*</artifact>

@@ -1,85 +1,106 @@
 package org.jaybaws.metrics.bw.workers;
-
-import org.jaybaws.metrics.bw.BW5MicrometerAgent;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
-
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.metrics.Meter;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeDataSupport;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.jaybaws.metrics.bw.util.Logger;
 
 public class GetExecInfoWorker implements Runnable {
 
-    private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
+    private final MBeanServerConnection mbsc;
+    private final ObjectName objectName;
 
-    private MBeanServerConnection mbsc;
-    private ObjectName objectName;
+    private long valStatus = -1;
+    private long valUptime = -1;
+    private long valThreads = -1;
 
-    private AtomicLong metricStatus  = Metrics.gauge("bwengine.status",  Arrays.asList(Tag.of("method", "GetExecInfo")), new AtomicLong(-1));
-    private AtomicLong metricUptime  = Metrics.gauge("bwengine.uptime",  Arrays.asList(Tag.of("method", "GetExecInfo")), new AtomicLong(-1));
-    private AtomicLong metricThreads = Metrics.gauge("bwengine.threads", Arrays.asList(Tag.of("method", "GetExecInfo")), new AtomicLong(-1));
-
-    public GetExecInfoWorker(MBeanServerConnection mbsc, ObjectName objectName) {
+    public GetExecInfoWorker(OpenTelemetry sdk, MBeanServerConnection mbsc, ObjectName objectName) {
         this.mbsc = mbsc;
         this.objectName = objectName;
+
+        Meter meter = sdk.getMeter("com.tibco.bw.hawkmethod.getexecinfo");
+
+        meter
+                .gaugeBuilder("bwengine.status")
+                .ofLongs()
+                .setDescription("Reports the status of the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valStatus, Attributes.empty())
+                );
+
+        meter
+                .gaugeBuilder("bwengine.uptime")
+                .ofLongs()
+                .setDescription("Reports the uptime of the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valUptime, Attributes.empty())
+                );
+
+        meter
+                .gaugeBuilder("bwengine.threads")
+                .ofLongs()
+                .setDescription("Reports the amount of availble engine threads within the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valThreads, Attributes.empty())
+                );
     }
 
     @Override
     public void run() {
-        LOGGER.entering(this.getClass().getCanonicalName(), "run");
+        Logger.entering(this.getClass().getCanonicalName(), "run");
 
         try {
-            CompositeDataSupport result = (CompositeDataSupport) mbsc.invoke(objectName, "GetExecInfo", null, null);
+            CompositeDataSupport result =
+                    (CompositeDataSupport) mbsc.invoke(
+                            objectName,
+                            "GetExecInfo",
+                            null,
+                            null
+                    );
 
             if (result != null) {
-
+                this.valUptime = (Long) result.get("Uptime");
+                this.valThreads = (Integer) result.get("Threads");
                 String status = (String) result.get("Status");
 
-                long valUptime = (Long) result.get("Uptime");
-                long valThreads = (Integer) result.get("Threads");
-                long valStatus;
                 switch (status) {
                     case "ACTIVE":
-                        valStatus = 4;
+                        this.valStatus = 4;
                         break;
                     case "SUSPENDED":
-                        valStatus = 3;
+                        this.valStatus = 3;
                         break;
                     case "STANDBY":
-                        valStatus = 2;
+                        this.valStatus = 2;
                         break;
                     case "STOPPING":
-                        valStatus = 1;
+                        this.valStatus = 1;
                         break;
                     default:
-                        valStatus = 0;
+                        this.valStatus = 0;
                         break;
                 }
 
-                metricStatus.set(valStatus);
-                metricUptime.set(valUptime);
-                metricThreads.set(valThreads);
-
-                LOGGER.fine(
+                Logger.fine(
                         String.format(
                                 "[GetExecInfo] status=%s/%d, uptime=%d, threads=%d.",
                                 status,
-                                valStatus,
-                                valUptime,
-                                valThreads                        )
+                                this.valStatus,
+                                this.valUptime,
+                                this.valThreads                        )
                 );
             }
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Exception invoking 'GetExecInfo'...", t);
+            Logger.warning("Exception invoking 'GetExecInfo'...", t);
         }
 
-        LOGGER.exiting(this.getClass().getCanonicalName(), "run");
+        Logger.exiting(this.getClass().getCanonicalName(), "run");
     }
-
 }
 
 /*

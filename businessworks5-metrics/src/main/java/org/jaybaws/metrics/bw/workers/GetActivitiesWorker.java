@@ -1,63 +1,68 @@
 package org.jaybaws.metrics.bw.workers;
-import org.jaybaws.metrics.bw.BW5MicrometerAgent;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
 import javax.management.*;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.TabularDataSupport;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jaybaws.metrics.bw.util.Logger;
 
 public class GetActivitiesWorker implements Runnable {
 
-    private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
+    private final ObjectName objectName;
+    private final MBeanServerConnection mbsc;
+    private final Pattern activityClassPattern;
 
-    private ObjectName objectName;
-    private MBeanServerConnection mbsc;
-    private Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
-    private String activityClassFilter;
-    private Pattern activityClassPattern;
+    private final Meter meter;
 
-    public GetActivitiesWorker(MBeanServerConnection mbsc, ObjectName objectName, String activityClassFilter) {
+    private final Map<String, Long> metrics = new HashMap<String, Long>();
+
+    public GetActivitiesWorker(OpenTelemetry sdk, MBeanServerConnection mbsc, ObjectName objectName, String activityClassFilter) {
         this.mbsc = mbsc;
         this.objectName = objectName;
-        this.activityClassFilter = activityClassFilter;
         this.activityClassPattern = Pattern.compile(activityClassFilter);
+        this.meter = sdk.getMeter("com.tibco.bw.hawkmethod.getactivities");
     }
 
-    private AtomicLong metric(String processDefinitionName, String activityName, String activityClassName, String metricName) {
+    private void trackMetric(String metricName, String processDefinitionName, String activityName, String activityClassName, long value) {
         String uniqueId = processDefinitionName + "/" + activityClassName + "/" + activityName + "/" + metricName;
 
-        AtomicLong m = metrics.get(uniqueId);
-        if (m == null) {
-            m = Metrics.gauge(
-                    metricName,
-                    Arrays.asList(
-                            Tag.of("method", "GetActivities"),
-                            Tag.of("process", processDefinitionName),
-                            Tag.of("activityClass", activityClassName),
-                            Tag.of("activity", activityName)
-                    ),
-                    new AtomicLong(-1)
-            );
-            metrics.put(uniqueId, m);
+        if (metrics.containsKey(uniqueId)) {
+            metrics.replace(uniqueId, value);
+        } else {
+            metrics.put(uniqueId, value);
+            this.meter
+                    .gaugeBuilder(metricName)
+                    .ofLongs()
+                    .buildWithCallback(
+                            result -> result.record(
+                                    this.metrics.get(uniqueId),
+                                    Attributes.builder()
+                                            .put("process", processDefinitionName)
+                                            .put("activityClass", activityClassName)
+                                            .put("activity", activityName)
+                                            .build()
+                            )
+                    );
         }
-
-        return m;
     }
 
     @Override
     public void run() {
-        LOGGER.entering(this.getClass().getCanonicalName(), "run");
+        Logger.entering(this.getClass().getCanonicalName(), "run");
 
         try {
-            TabularDataSupport result = (TabularDataSupport) mbsc.invoke(objectName, "GetActivities", new Object[] { null }, new String[] { String.class.getName() });
+            TabularDataSupport result =
+                    (TabularDataSupport) mbsc.invoke(
+                            objectName,
+                            "GetActivities",
+                            new Object[] { null },
+                            new String[] { String.class.getName() }
+                    );
 
             if (result != null) {
                 for (Object value : result.values()) {
@@ -69,45 +74,25 @@ public class GetActivitiesWorker implements Runnable {
 
                     Matcher m = this.activityClassPattern.matcher(activityClass);
                     if (m.matches()) {
-                        long valExecutionCount = (Long) resultItem.get("ExecutionCount");
-                        metric(process, activity, activityClass, "bwengine.activity.executioncount").set(valExecutionCount);
-
-                        long valElapsedTime = (Long) resultItem.get("ElapsedTime");
-                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime").set(valElapsedTime);
-
-                        long valExecutionTime = (Long) resultItem.get("ExecutionTime");
-                        metric(process, activity, activityClass, "bwengine.activity.executiontime").set(valExecutionTime);
-
-                        long valErrorCount = (Long) resultItem.get("ErrorCount");
-                        metric(process, activity, activityClass, "bwengine.activity.errorcount").set(valErrorCount);
-
-                        long valMinElapsedTime = (Long) resultItem.get("MinElapsedTime");
-                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime_min").set(valMinElapsedTime);
-
-                        long valMaxElapsedTime = (Long) resultItem.get("MaxElapsedTime");
-                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime_max").set(valMaxElapsedTime);
-
-                        long valMinExecutionTime = (Long) resultItem.get("MinExecutionTime");
-                        metric(process, activity, activityClass, "bwengine.activity.executiontime_min").set(valMinExecutionTime);
-
-                        long valMaxExecutionTime = (Long) resultItem.get("MaxExecutionTime");
-                        metric(process, activity, activityClass, "bwengine.activity.executiontime_max").set(valMaxExecutionTime);
-
-                        long valMostRecentElapsedTime = (Long) resultItem.get("MostRecentElapsedTime");
-                        metric(process, activity, activityClass, "bwengine.activity.elapsedtime_recent").set(valMostRecentElapsedTime);
-
-                        long valMostRecentExecutionTime = (Long) resultItem.get("MostRecentExecutionTime");
-                        metric(process, activity, activityClass, "bwengine.activity.executiontime_recent").set(valMostRecentExecutionTime);
+                        trackMetric("bwengine.activity.executioncount", process, activity, activityClass, (Long) resultItem.get("ExecutionCount"));
+                        trackMetric("bwengine.activity.errorcount", process, activity, activityClass, (Long) resultItem.get("ErrorCount"));
+                        trackMetric("bwengine.activity.elapsedtime", process, activity, activityClass, (Long) resultItem.get("ElapsedTime"));
+                        trackMetric("bwengine.activity.elapsedtime_min", process, activity, activityClass, (Long) resultItem.get("MinElapsedTime"));
+                        trackMetric("bwengine.activity.elapsedtime_max", process, activity, activityClass, (Long) resultItem.get("MaxElapsedTime"));
+                        trackMetric("bwengine.activity.executiontime", process, activity, activityClass, (Long) resultItem.get("ExecutionTime"));
+                        trackMetric("bwengine.activity.executiontime_min", process, activity, activityClass, (Long) resultItem.get("MinExecutionTime"));
+                        trackMetric("bwengine.activity.executiontime_max", process, activity, activityClass, (Long) resultItem.get("MaxExecutionTime"));
+                        trackMetric("bwengine.activity.elapsedtime_recent", process, activity, activityClass, (Long) resultItem.get("MostRecentElapsedTime"));
+                        trackMetric("bwengine.activity.executiontime_recent", process, activity, activityClass, (Long) resultItem.get("MostRecentExecutionTime"));
                     }
                 }
             }
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Exception invoking 'GetActivities'...", t);
+            Logger.warning("Exception invoking 'GetActivities'...", t);
         }
 
-        LOGGER.exiting(this.getClass().getCanonicalName(), "run");
+        Logger.exiting(this.getClass().getCanonicalName(), "run");
     }
-
 }
 
 /*

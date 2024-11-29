@@ -1,39 +1,49 @@
 package org.jaybaws.metrics.bw.workers;
-import org.jaybaws.metrics.bw.BW5MicrometerAgent;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.jaybaws.metrics.bw.util.Logger;
 
 public class GetActiveProcessCountWorker implements Runnable {
 
-    private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
+    private final MBeanServerConnection mbsc;
+    private final ObjectName objectName;
 
-    private MBeanServerConnection mbsc;
-    private ObjectName objectName;
+    private long valActiveProcessCount = -1;
 
-    private AtomicInteger activeProcessCount = Metrics.gauge("bwengine.activeprocess.count", Arrays.asList(Tag.of("method", "GetActiveProcessCount")), new AtomicInteger(-1));
-
-    public GetActiveProcessCountWorker(MBeanServerConnection mbsc, ObjectName objectName) {
+    public GetActiveProcessCountWorker(OpenTelemetry sdk, MBeanServerConnection mbsc, ObjectName objectName) {
         this.mbsc = mbsc;
         this.objectName = objectName;
+
+        Meter meter = sdk.getMeter("com.tibco.bw.hawkmethod.getactiveprocesscount");
+        meter
+                .upDownCounterBuilder("bwengine.activeprocess.count")
+                .setDescription("Reports the amount of active processes within the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valActiveProcessCount, Attributes.empty())
+                );
     }
 
     @Override
     public void run() {
-        LOGGER.entering(this.getClass().getCanonicalName(), "run");
+        Logger.entering(this.getClass().getCanonicalName(), "run");
 
         try {
-            Integer valActiveProcessCount = (Integer) mbsc.invoke(objectName, "GetActiveProcessCount", null, null);
+            Integer value =
+                    (Integer) mbsc.invoke(
+                            objectName,
+                            "GetActiveProcessCount",
+                            null,
+                            null
+                    );
 
-            if (valActiveProcessCount != null) {
-                activeProcessCount.set(valActiveProcessCount);
+            if (value != null) {
+                this.valActiveProcessCount = value;
 
-                LOGGER.fine(
+                Logger.fine(
                         String.format(
                                 "[GetActiveProcessCount] count=%d.",
                                 valActiveProcessCount
@@ -41,10 +51,10 @@ public class GetActiveProcessCountWorker implements Runnable {
                 );
             }
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Exception invoking 'GetActiveProcessCount'...", t);
+            Logger.warning("Exception invoking 'GetActiveProcessCount'...", t);
         }
 
-        LOGGER.exiting(this.getClass().getCanonicalName(), "run");
+        Logger.exiting(this.getClass().getCanonicalName(), "run");
     }
 }
 

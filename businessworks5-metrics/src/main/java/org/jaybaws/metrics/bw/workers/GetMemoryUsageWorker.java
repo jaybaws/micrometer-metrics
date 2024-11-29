@@ -1,51 +1,85 @@
 package org.jaybaws.metrics.bw.workers;
-import org.jaybaws.metrics.bw.BW5MicrometerAgent;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeDataSupport;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.jaybaws.metrics.bw.util.Logger;
 
 public class GetMemoryUsageWorker implements Runnable {
 
-    private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
+    private final MBeanServerConnection mbsc;
+    private final ObjectName objectName;
 
-    private MBeanServerConnection mbsc;
-    private ObjectName objectName;
+    private long valUsedBytes = -1;
+    private long valPercentUsed = -1;
+    private long valFreeBytes = -1;
+    private long valTotalBytes = -1;
 
-    private AtomicLong metricMemUsed = Metrics.gauge("bwengine.memory.used", Arrays.asList(Tag.of("method", "GetMemoryUsage")), new AtomicLong(-1));
-    private AtomicLong metricMemUsedPct = Metrics.gauge("bwengine.memory.used.pct", Arrays.asList(Tag.of("method", "GetMemoryUsage")), new AtomicLong(-1));
-    private AtomicLong metricMemFree = Metrics.gauge("bwengine.memory.free", Arrays.asList(Tag.of("method", "GetMemoryUsage")), new AtomicLong(-1));
-    private AtomicLong metricMemTotal = Metrics.gauge("bwengine.memory.total", Arrays.asList(Tag.of("method", "GetMemoryUsage")), new AtomicLong(-1));
-
-    public GetMemoryUsageWorker(MBeanServerConnection mbsc, ObjectName objectName) {
+    public GetMemoryUsageWorker(OpenTelemetry sdk, MBeanServerConnection mbsc, ObjectName objectName) {
         this.mbsc = mbsc;
         this.objectName = objectName;
+
+        Meter meter = sdk
+                .getMeter("com.tibco.bw.hawkmethod.getmemoryusage");
+
+        meter
+                .gaugeBuilder("bwengine.memory.used")
+                .setUnit("bytes")
+                .setDescription("The amount of memory used by the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valUsedBytes, Attributes.empty())
+                );
+
+        meter
+                .gaugeBuilder("bwengine.memory.used.pct")
+                .setDescription("The percentage of availble memory that is used by the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valPercentUsed, Attributes.empty())
+                );
+
+        meter
+                .gaugeBuilder("bwengine.memory.free")
+                .setUnit("bytes")
+                .setDescription("The amount of memory that is still free in the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valFreeBytes, Attributes.empty())
+                );
+
+        meter
+                .gaugeBuilder("bwengine.memory.total")
+                .setUnit("bytes")
+                .setDescription("The total amount of memory allocated to the BW engine.")
+                .buildWithCallback(
+                        result -> result.record(
+                                this.valTotalBytes, Attributes.empty())
+                );
     }
 
     @Override
     public void run() {
-        LOGGER.entering(this.getClass().getCanonicalName(), "run");
+        Logger.entering(this.getClass().getCanonicalName(), "run");
 
         try {
-            CompositeDataSupport result = (CompositeDataSupport) mbsc.invoke(objectName, "GetMemoryUsage", null, null);
+            CompositeDataSupport result =
+                    (CompositeDataSupport) mbsc.invoke(
+                            objectName,
+                            "GetMemoryUsage",
+                            null,
+                            null
+                    );
 
             if (result != null) {
-                long valUsedBytes = (Long) result.get("UsedBytes");
-                long valPercentUsed = (Long) result.get("PercentUsed");
-                long valFreeBytes = (Long) result.get("FreeBytes");
-                long valTotalBytes = (Long) result.get("TotalBytes");
+                this.valUsedBytes = (Long) result.get("UsedBytes");
+                this.valPercentUsed = (Long) result.get("PercentUsed");
+                this.valFreeBytes = (Long) result.get("FreeBytes");
+                this.valTotalBytes = (Long) result.get("TotalBytes");
 
-                metricMemUsed.set(valUsedBytes);
-                metricMemUsedPct.set(valPercentUsed);
-                metricMemFree.set(valFreeBytes);
-                metricMemTotal.set(valTotalBytes);
-
-                LOGGER.fine(
+                Logger.fine(
                         String.format(
                                 "[GetMemoryUsage] used=%d, free=%d, total=%d, pctUsed=%d.",
                                 valUsedBytes,
@@ -56,12 +90,11 @@ public class GetMemoryUsageWorker implements Runnable {
                 );
             }
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Exception invoking 'GetMemoryUsage'...", t);
+            Logger.warning("Exception invoking 'GetMemoryUsage'...", t);
         }
 
-        LOGGER.exiting(this.getClass().getCanonicalName(), "run");
+        Logger.exiting(this.getClass().getCanonicalName(), "run");
     }
-
 }
 
 /** Example (toString()-rendered) output of this Hawk MicroAgent Method:

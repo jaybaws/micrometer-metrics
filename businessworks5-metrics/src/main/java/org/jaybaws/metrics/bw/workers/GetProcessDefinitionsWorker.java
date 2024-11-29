@@ -1,53 +1,54 @@
 package org.jaybaws.metrics.bw.workers;
-import org.jaybaws.metrics.bw.BW5MicrometerAgent;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.TabularDataSupport;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.jaybaws.metrics.bw.util.Logger;
 
 public class GetProcessDefinitionsWorker implements Runnable {
 
-    private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
+    private final MBeanServerConnection mbsc;
+    private final ObjectName objectName;
 
-    private MBeanServerConnection mbsc;
-    private ObjectName objectName;
-    private Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
+    private final Meter meter;
 
-    public GetProcessDefinitionsWorker(MBeanServerConnection mbsc, ObjectName objectName) {
+    private final Map<String, Long> metrics = new HashMap<String, Long>();
+
+    public GetProcessDefinitionsWorker(OpenTelemetry sdk, MBeanServerConnection mbsc, ObjectName objectName) {
         this.mbsc = mbsc;
         this.objectName = objectName;
+        this.meter = sdk.getMeter("com.tibco.bw.hawkmethod.getprocessdefinitions");
     }
 
-    private AtomicLong metric(String processDefinitionName, String metricName) {
+    private void trackMetric(String metricName, String processDefinitionName, long value) {
         String uniqueId = processDefinitionName + "/" + metricName;
 
-        AtomicLong m = metrics.get(uniqueId);
-        if (m == null) {
-            m = Metrics.gauge(
-                    metricName,
-                    Arrays.asList(
-                            Tag.of("method", "GetProcessDefinitions"),
-                            Tag.of("process", processDefinitionName)
-                    ),
-                    new AtomicLong(-1)
-            );
-            metrics.put(uniqueId, m);
+        if (metrics.containsKey(uniqueId)) {
+            metrics.replace(uniqueId, value);
+        } else {
+            metrics.put(uniqueId, value);
+            this.meter
+                    .gaugeBuilder(metricName)
+                    .ofLongs()
+                    .buildWithCallback(
+                            result -> result.record(
+                                    this.metrics.get(uniqueId),
+                                    Attributes.builder()
+                                            .put("process", processDefinitionName)
+                                            .build()
+                            )
+                    );
         }
-
-        return m;
     }
 
     @Override
     public void run() {
-        LOGGER.entering(this.getClass().getCanonicalName(), "run");
+        Logger.entering(this.getClass().getCanonicalName(), "run");
 
         try {
             TabularDataSupport result = (TabularDataSupport) mbsc.invoke(objectName, "GetProcessDefinitions", null, null);
@@ -58,65 +59,31 @@ public class GetProcessDefinitionsWorker implements Runnable {
 
                     String process = (String) resultItem.get("Name");
 
-                    long valCreated = (Long) resultItem.get("Created");
-                    metric(process, "bwengine.processdefinition.created").set(valCreated);
-
-                    long valSuspended = (Long) resultItem.get("Suspended");
-                    metric(process, "bwengine.processdefinition.suspended").set(valSuspended);
-
-                    long valSwapped = (Long) resultItem.get("Swapped");
-                    metric(process, "bwengine.processdefinition.swapped").set(valSwapped);
-
-                    long valQueued = (Long) resultItem.get("Queued");
-                    metric(process, "bwengine.processdefinition.queued").set(valQueued);
-
-                    long valAborted = (Long) resultItem.get("Aborted");
-                    metric(process, "bwengine.processdefinition.aborted").set(valAborted);
-
-                    long valCompleted = (Long) resultItem.get("Completed");
-                    metric(process, "bwengine.processdefinition.completed").set(valCompleted);
-
-                    long valCheckpointed = (Long) resultItem.get("Checkpointed");
-                    metric(process, "bwengine.processdefinition.checkpointed").set(valCheckpointed);
-
-                    long valTotalExecution = (Long) resultItem.get("TotalExecution");
-                    metric(process, "bwengine.processdefinition.execution_total").set(valTotalExecution);
-
-                    long valAverageExecution = (Long) resultItem.get("AverageExecution");
-                    metric(process, "bwengine.processdefinition.execution_avg").set(valAverageExecution);
-
-                    long valTotalElapsed = (Long) resultItem.get("TotalElapsed");
-                    metric(process, "bwengine.processdefinition.elapsed_total").set(valTotalElapsed);
-
-                    long valAverageElapsed = (Long) resultItem.get("AverageElapsed");
-                    metric(process, "bwengine.processdefinition.elapsed_avg").set(valAverageElapsed);
-
-                    long valMinElapsed = (Long) resultItem.get("MinElapsed");
-                    metric(process, "bwengine.processdefinition.elapsed_min").set(valMinElapsed);
-
-                    long valMaxElapsed = (Long) resultItem.get("MaxElapsed");
-                    metric(process, "bwengine.processdefinition.elapsed_max").set(valMaxElapsed);
-
-                    long valMinExecution = (Long) resultItem.get("MinExecution");
-                    metric(process, "bwengine.processdefinition.execution_min").set(valMinExecution);
-
-                    long valMaxExecution = (Long) resultItem.get("MaxExecution");
-                    metric(process, "bwengine.processdefinition.execution_max").set(valMaxExecution);
-
-                    long valMostRecentExecutionTime = (Long) resultItem.get("MostRecentExecutionTime");
-                    metric(process, "bwengine.processdefinition.execution_recent").set(valMostRecentExecutionTime);
-
-                    long valMostRecentElapsedTime = (Long) resultItem.get("MostRecentElapsedTime");
-                    metric(process, "bwengine.processdefinition.elapsed_recent").set(valMostRecentElapsedTime);
+                    trackMetric("bwengine.processdefinition.created", process, (Long) resultItem.get("Created"));
+                    trackMetric("bwengine.processdefinition.suspended", process, (Long) resultItem.get("Suspended"));
+                    trackMetric("bwengine.processdefinition.swapped", process, (Long) resultItem.get("Swapped"));
+                    trackMetric("bwengine.processdefinition.queued", process, (Long) resultItem.get("Queued"));
+                    trackMetric("bwengine.processdefinition.aborted", process, (Long) resultItem.get("Aborted"));
+                    trackMetric("bwengine.processdefinition.completed", process, (Long) resultItem.get("Completed"));
+                    trackMetric("bwengine.processdefinition.checkpointed", process, (Long) resultItem.get("Checkpointed"));
+                    trackMetric("bwengine.processdefinition.execution_total", process, (Long) resultItem.get("TotalExecution"));
+                    trackMetric("bwengine.processdefinition.execution_avg", process, (Long) resultItem.get("AverageExecution"));
+                    trackMetric("bwengine.processdefinition.elapsed_total", process, (Long) resultItem.get("TotalElapsed"));
+                    trackMetric("bwengine.processdefinition.elapsed_avg", process, (Long) resultItem.get("AverageElapsed"));
+                    trackMetric("bwengine.processdefinition.elapsed_min", process, (Long) resultItem.get("MinElapsed"));
+                    trackMetric("bwengine.processdefinition.elapsed_max", process, (Long) resultItem.get("MaxElapsed"));
+                    trackMetric("bwengine.processdefinition.execution_min", process, (Long) resultItem.get("MinExecution"));
+                    trackMetric("bwengine.processdefinition.execution_max", process, (Long) resultItem.get("MaxExecution"));
+                    trackMetric("bwengine.processdefinition.execution_recent", process, (Long) resultItem.get("MostRecentExecutionTime"));
+                    trackMetric("bwengine.processdefinition.elapsed_recent", process, (Long) resultItem.get("MostRecentElapsedTime"));
                 }
             }
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Exception invoking 'GetProcessDefinitions'...", t);
+            Logger.warning("Exception invoking 'GetProcessDefinitions'...", t);
         }
 
-        LOGGER.exiting(this.getClass().getCanonicalName(), "run");
+        Logger.exiting(this.getClass().getCanonicalName(), "run");
     }
-
 }
 
 /*

@@ -1,57 +1,64 @@
 package org.jaybaws.metrics.bw.workers;
-import org.jaybaws.metrics.bw.BW5MicrometerAgent;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.TabularDataSupport;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.jaybaws.metrics.bw.util.Logger;
 
 public class GetProcessStartersWorker implements Runnable {
 
-    private static final Logger LOGGER = Logger.getLogger(BW5MicrometerAgent.class.getName());
+    private final MBeanServerConnection mbsc;
+    private final ObjectName objectName;
 
-    private MBeanServerConnection mbsc;
-    private ObjectName objectName;
-    private Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
+    private final Meter meter;
 
-    public GetProcessStartersWorker(MBeanServerConnection mbsc, ObjectName objectName) {
+    private final Map<String, Long> metrics = new HashMap<String, Long>();
+
+    public GetProcessStartersWorker(OpenTelemetry sdk, MBeanServerConnection mbsc, ObjectName objectName) {
         this.mbsc = mbsc;
         this.objectName = objectName;
+        this.meter = sdk.getMeter("com.tibco.bw.hawkmethod.getprocessstarters");
     }
 
-    private AtomicLong metric(String processDefinitionName, String starterName, String metricName) {
+    private void trackMetric(String metricName, String processDefinitionName, String starterName, long value) {
         String uniqueId = processDefinitionName + "/" + starterName + "/" + metricName;
 
-        AtomicLong m = metrics.get(uniqueId);
-        if (m == null) {
-            m = Metrics.gauge(
-                    metricName,
-                    Arrays.asList(
-                            Tag.of("method", "GetProcessStarters"),
-                            Tag.of("process", processDefinitionName),
-                            Tag.of("activity", starterName)
-                    ),
-                    new AtomicLong(-1)
-            );
-            metrics.put(uniqueId, m);
+        if (metrics.containsKey(uniqueId)) {
+            metrics.replace(uniqueId, value);
+        } else {
+            metrics.put(uniqueId, value);
+            this.meter
+                    .gaugeBuilder(metricName)
+                    .ofLongs()
+                    .buildWithCallback(
+                            result -> result.record(
+                                    this.metrics.get(uniqueId),
+                                    Attributes.builder()
+                                            .put("process", processDefinitionName)
+                                            .put("activity", starterName)
+                                            .build()
+                            )
+                    );
         }
-
-        return m;
     }
 
     @Override
     public void run() {
-        LOGGER.entering(this.getClass().getCanonicalName(), "run");
+        Logger.entering(this.getClass().getCanonicalName(), "run");
 
         try {
-            TabularDataSupport result = (TabularDataSupport) mbsc.invoke(objectName, "GetProcessStarters", null, null);
+            TabularDataSupport result =
+                    (TabularDataSupport) mbsc.invoke(
+                            objectName,
+                            "GetProcessStarters",
+                            null,
+                            null
+                    );
 
             if (result != null) {
                 for (Object value : result.values()) {
@@ -63,19 +70,19 @@ public class GetProcessStartersWorker implements Runnable {
                     String status = (String) resultItem.get("Status");
 
                     long valCompleted = (Integer) resultItem.get("Completed");
-                    metric(processDefinition, starterName, "bwengine.starters.completed").set(valCompleted);
+                    trackMetric("bwengine.starters.completed", processDefinition, starterName, valCompleted);
 
                     long valCreated = (Integer) resultItem.get("Created");
-                    metric(processDefinition, starterName, "bwengine.starters.created").set(valCreated);
+                    trackMetric("bwengine.starters.created", processDefinition, starterName, valCreated);
 
                     long valCreationRate = (Integer) resultItem.get("CreationRate");
-                    metric(processDefinition, starterName, "bwengine.starters.creationrate").set(valCreationRate);
+                    trackMetric("bwengine.starters.creationrate", processDefinition, starterName, valCreationRate);
 
                     long valDuration = (Long) resultItem.get("Duration");
-                    metric(processDefinition, starterName, "bwengine.starters.duration").set(valDuration);
+                    trackMetric("bwengine.starters.duration", processDefinition, starterName, valDuration);
 
                     long valRunning = (Integer) resultItem.get("Running");
-                    metric(processDefinition, starterName, "bwengine.starters.running").set(valRunning);
+                    trackMetric("bwengine.starters.running", processDefinition, starterName, valRunning);
 
                     long valStatus;
                     switch (status) {
@@ -92,11 +99,13 @@ public class GetProcessStartersWorker implements Runnable {
                             valStatus = -1;
                             break;
                     }
-                    metric(processDefinition, starterName, "bwengine.starters.status").set(valStatus);
+                    trackMetric("bwengine.starters.status", processDefinition, starterName, valStatus);
 
-                    LOGGER.fine(
+                    Logger.fine(
                             String.format(
-                                    "[GetProcessStarters] completed=%d, created=%d, rate=%d, duration=%d, running=%d.",
+                                    "[GetProcessStarters] '%s/%s' completed=%d, created=%d, rate=%d, duration=%d, running=%d.",
+                                    processDefinition,
+                                    starterName,
                                     valCompleted,
                                     valCreated,
                                     valCreationRate,
@@ -105,15 +114,13 @@ public class GetProcessStartersWorker implements Runnable {
                             )
                     );
                 }
-
             }
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Exception invoking 'GetProcessStarters'...", t);
+            Logger.warning("Exception invoking 'GetProcessStarters'...", t);
         }
 
-        LOGGER.exiting(this.getClass().getCanonicalName(), "run");
+        Logger.exiting(this.getClass().getCanonicalName(), "run");
     }
-
 }
 
 /*
