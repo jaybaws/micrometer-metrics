@@ -25,6 +25,11 @@
       <version>${otel.version}</version>
     </dependency>
     <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-exporter-otlp</artifactId>
+      <version>${otel.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.ibm.mq</groupId>
       <artifactId>com.ibm.mq.allclient</artifactId>
       <version>9.4.1.0</version>
