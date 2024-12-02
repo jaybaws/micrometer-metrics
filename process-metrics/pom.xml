@@ -4,25 +4,20 @@
 
 	<parent>
 		<groupId>org.jaybaws.metrics</groupId>
-		<artifactId>micrometer-metrics</artifactId>
+		<artifactId>otel-metrics</artifactId>
 		<version>${revision}</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
 	<artifactId>process-metrics</artifactId>
-	<description>Bridge OS process statistics to Micrometer metrics, for further distribution.</description>
+	<description>Scan for OS processes and logs their runtime state.</description>
 	<packaging>jar</packaging>
 
 	<dependencies>
 		<dependency>
-			<groupId>io.micrometer</groupId>
-			<artifactId>micrometer-core</artifactId>
-			<version>${micrometer.version}</version>
-		</dependency>
-		<dependency>
 			<groupId>org.json</groupId>
 			<artifactId>json</artifactId>
-			<version>20240303</version>
+			<version>${json.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -99,7 +94,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>org.jaybaws.metrics.os.ProcessMicrometerApp</mainClass>
+							<mainClass>org.jaybaws.metrics.os.ProcessMonitorApp</mainClass>
 						</manifest>
 					</archive>
 				</configuration>
@@ -114,6 +109,7 @@
 							<goal>shade</goal>
 						</goals>
 						<configuration>
+							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<filters>
 								<filter>
 									<artifact>*:*</artifact>

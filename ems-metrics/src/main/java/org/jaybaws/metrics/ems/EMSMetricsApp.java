@@ -4,11 +4,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-public class EMSMicrometerApp {
+public class EMSMetricsApp {
 
     private static final int c_executorService_corePoolSize = 10;
 
-    private static final String c_jvm_arg_prefix = EMSMicrometerApp.class.getPackage().getName();
+    private static final String c_jvm_arg_prefix = EMSMetricsApp.class.getPackage().getName();
 
     private static final String c_jvm_arg_ems_url  = c_jvm_arg_prefix + ".url";
     private static final String c_jvm_arg_ems_user = c_jvm_arg_prefix + ".user";
@@ -39,16 +39,16 @@ public class EMSMicrometerApp {
             );
         } else {
 
-            LOGGER.info("Starting EMS Micrometer metrics application...");
+            LOGGER.info("Starting EMSMetricsApp application...");
 
             String url = System.getProperty(c_jvm_arg_ems_url, "tcp://localhost:7222");
             String user = System.getProperty(c_jvm_arg_ems_user, "admin");
             String pass = System.getProperty(c_jvm_arg_ems_pass, "");
 
-            boolean getServerInfo = Boolean.valueOf(System.getProperty(c_jvm_arg_ems_feature_serverinfo, "true"));
-            boolean getQueueInfo = Boolean.valueOf(System.getProperty(c_jvm_arg_ems_feature_queueinfo, "true"));
-            boolean getTopicInfo = Boolean.valueOf(System.getProperty(c_jvm_arg_ems_feature_topicinfo, "false"));
-            boolean getDurableInfo = Boolean.valueOf(System.getProperty(c_jvm_arg_ems_feature_durableinfo, "false"));
+            boolean getServerInfo = Boolean.parseBoolean(System.getProperty(c_jvm_arg_ems_feature_serverinfo, "true"));
+            boolean getQueueInfo = Boolean.parseBoolean(System.getProperty(c_jvm_arg_ems_feature_queueinfo, "true"));
+            boolean getTopicInfo = Boolean.parseBoolean(System.getProperty(c_jvm_arg_ems_feature_topicinfo, "false"));
+            boolean getDurableInfo = Boolean.parseBoolean(System.getProperty(c_jvm_arg_ems_feature_durableinfo, "false"));
 
             LOGGER.info(
                     String.format(

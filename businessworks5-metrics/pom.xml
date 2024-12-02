@@ -4,7 +4,7 @@
 
   <parent>
     <groupId>org.jaybaws.metrics</groupId>
-    <artifactId>micrometer-metrics</artifactId>
+    <artifactId>otel-metrics</artifactId>
     <version>${revision}</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
@@ -42,18 +42,6 @@
       <version>1.21.0</version>
       <scope>provided</scope>
     </dependency>
-
-    <!--
-    <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-core</artifactId>
-      <version>${micrometer.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-registry-otlp</artifactId>
-      <version>${micrometer.version}</version>
-    </dependency> -->
 
     <dependency>
       <groupId>junit</groupId>
@@ -125,7 +113,7 @@
               <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
             </manifest>
             <manifestEntries>
-              <Premain-Class>org.jaybaws.metrics.bw.BW5MicrometerAgent</Premain-Class>
+              <Premain-Class>org.jaybaws.metrics.bw.BW5MonitorAgent</Premain-Class>
               <Can-Redefine-Classes>false</Can-Redefine-Classes>
               <Can-Retransform-Classes>false</Can-Retransform-Classes>
             </manifestEntries>
@@ -142,33 +130,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <!--<relocations>
-                <relocation>
-                  <pattern>org</pattern>
-                  <shadedPattern>shaded.org</shadedPattern>
-                  <excludes>
-                    <exclude>org.jaybaws.metrics.bw.*</exclude>
-                    <exclude>org.jaybaws.metrics.bw.util.*</exclude>
-                    <exclude>org.jaybaws.metrics.bw.workers.*</exclude>
-                  </excludes>
-                </relocation>
-                <relocation>
-                  <pattern>com.google</pattern>
-                  <shadedPattern>shaded.com.google</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>google</pattern>
-                  <shadedPattern>shaded.google</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>io</pattern>
-                  <shadedPattern>shaded.io</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>opentelemetry</pattern>
-                  <shadedPattern>shaded.opentelemetry</shadedPattern>
-                </relocation>
-              </relocations>-->
+              <createDependencyReducedPom>false</createDependencyReducedPom>
               <filters>
                 <filter>
                   <artifact>*:*</artifact>

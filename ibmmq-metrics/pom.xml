@@ -4,20 +4,25 @@
 
   <parent>
     <groupId>org.jaybaws.metrics</groupId>
-    <artifactId>micrometer-metrics</artifactId>
+    <artifactId>otel-metrics</artifactId>
     <version>${revision}</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>ibmmq-metrics</artifactId>
-  <description>Bridge IBM MQ statistics to Micrometer metrics, for further distribution.</description>
+  <description>Bridge IBM MQ statistics as OpenTelemetry metrics.</description>
   <packaging>jar</packaging>
 
   <dependencies>
     <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-core</artifactId>
-      <version>${micrometer.version}</version>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk</artifactId>
+      <version>${otel.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+      <version>${otel.version}</version>
     </dependency>
     <dependency>
       <groupId>com.ibm.mq</groupId>
@@ -92,7 +97,7 @@
             <manifest>
               <addClasspath>true</addClasspath>
               <classpathPrefix>lib/</classpathPrefix>
-              <mainClass>org.jaybaws.metrics.ibmmq.MQMicrometerApp</mainClass>
+              <mainClass>org.jaybaws.metrics.ibmmq.IBMMQMetricsApp</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -107,6 +112,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
               <filters>
                 <filter>
                   <artifact>*:*</artifact>

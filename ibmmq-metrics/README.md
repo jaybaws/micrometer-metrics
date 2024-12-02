@@ -1,10 +1,9 @@
 # IBM MQ metrics
-Bridges useful IBM MQ metrics to Micrometer.
+Bridges useful IBM MQ metrics via OpenTelemetry.
 
 ## How it works
 This is a standalone java application that will connect to MQ using the admin Java API and PCF queries. Every minute, it will 
-update its metrics. When this application is instrumented with an agent that is capable of shipping Micrometer metrics, you 
-can easily set up and end-to-end metric feed.
+update its metrics. Metrics are shipped via OpenTelemetry.
 
 ## Available metrics
 - `qmgr`

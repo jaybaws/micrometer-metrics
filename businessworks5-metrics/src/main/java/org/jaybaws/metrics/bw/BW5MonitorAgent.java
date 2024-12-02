@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import org.jaybaws.metrics.bw.util.Logger;
 
-public class BW5MicrometerAgent implements NotificationListener {
+public class BW5MonitorAgent implements NotificationListener {
 
     private final OpenTelemetry otelSdk;
     private final MBeanServerConnection server;
@@ -24,14 +24,14 @@ public class BW5MicrometerAgent implements NotificationListener {
     public static void premain(String agentArgs) {
         if (BWUtils.isBusinessWorksEngine()) {
             Logger.info("JVM looks like a BusinessWorks engine, so we will instrument!");
-            BW5MicrometerAgent bridge = new BW5MicrometerAgent();
+            BW5MonitorAgent bridge = new BW5MonitorAgent();
             Logger.info("End of instrumentation!");
         } else {
             Logger.warning("JVM does not look like a BusinessWorks engine... Leaving it as it is!");
         }
     }
 
-    public BW5MicrometerAgent() {
+    public BW5MonitorAgent() {
         /*
          * Grab us an OpenTelemetry SDK
          */

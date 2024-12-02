@@ -5,7 +5,7 @@ import org.junit.Test;
 /**
  * Unit test for simple App.
  */
-public class BW5MicrometerAgentTest
+public class BW5MonitorAgentTest
 {
     /**
      * Rigorous Test :-)

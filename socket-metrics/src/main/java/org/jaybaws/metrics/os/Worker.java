@@ -1,11 +1,12 @@
 package org.jaybaws.metrics.os;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,29 +14,29 @@ public class Worker implements Runnable {
 
     private static final Logger LOGGER = Logger.getLogger(Worker.class.getName());
 
-    private final Map<Integer, AtomicLong> metrics = new HashMap<Integer, AtomicLong>();
+    private final Map<Integer, Long> metrics = new HashMap<Integer, Long>();
 
     public Worker(List<Integer> ports) {
-        /**
-         * Set up the global (composite) Metric registry. Provide the global config generically.
-         */
-        Metrics.globalRegistry.config();
+        OpenTelemetry sdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
+        Meter meter = sdk.getMeter("sockets");
 
-        /**
+        /*
          * Initialize the map of unique metrics. This is deterministic, since it only depends
          * on the list of provided ports
          */
         for (int port : ports) {
-            metrics.put(
-                    port,
-                    Metrics.gauge(
-                            String.format("os.socket.is_open"),
-                            Arrays.asList(
-                                    Tag.of("port", String.valueOf(port))
-                            ),
-                            new AtomicLong(-1)
-                    )
-            );
+            this.metrics.put(port, (long) -1);
+            meter
+                    .gaugeBuilder("os.socket.is_open")
+                    .ofLongs()
+                    .buildWithCallback(
+                            result -> result.record(
+                                    this.metrics.get(port),
+                                    Attributes.builder()
+                                            .put("port", String.valueOf(port))
+                                            .build()
+                            )
+                    );
         }
     }
 
@@ -43,9 +44,10 @@ public class Worker implements Runnable {
     public void run() {
         try {
             for (int port : this.metrics.keySet()) {
-                AtomicLong metric = metrics.get(port);
                 boolean open = !available(port);
-                metric.set((open) ? 1 : 0);
+                long value = (open) ? 1 : 0;
+                metrics.replace(port, value);
+
             }
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "Something went wrong during the worker-run!", t);

@@ -4,11 +4,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-public class MQMicrometerApp {
+public class IBMMQMetricsApp {
 
     private static final int c_executorService_corePoolSize = 10;
 
-    private static final String c_jvm_arg_prefix = MQMicrometerApp.class.getPackage().getName();
+    private static final String c_jvm_arg_prefix = IBMMQMetricsApp.class.getPackage().getName();
 
     private static final String c_jvm_arg_ibmmq_qmgr = c_jvm_arg_prefix + ".qmgr";
     private static final String c_jvm_arg_ibmmq_host = c_jvm_arg_prefix + ".host";
@@ -24,20 +24,20 @@ public class MQMicrometerApp {
     private static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(c_executorService_corePoolSize);
 
     public static void main(String[] args) {
-        /**
+        /*
          * docker run -d --env MQ_DEV=true --env MQ_QMGR_NAME=QMGR --env LICENSE=accept -p 14140:1414 ibmcom/mq:latest
          */
-        LOGGER.info("Starting IBM MQ Micrometer metrics application...");
+        LOGGER.info("Starting IBMMQMetricsApp application...");
 
         String qmgr = System.getProperty(c_jvm_arg_ibmmq_qmgr, "QMGR");
         String host = System.getProperty(c_jvm_arg_ibmmq_host, "localhost");
-        int port = Integer.valueOf(System.getProperty(c_jvm_arg_ibmmq_port, "14140"));
+        int port = Integer.parseInt(System.getProperty(c_jvm_arg_ibmmq_port, "14140"));
         String chan = System.getProperty(c_jvm_arg_ibmmq_chan, "DEV.ADMIN.SVRCONN");
         String user = System.getProperty(c_jvm_arg_ibmmq_user, "admin");
         String pass = System.getProperty(c_jvm_arg_ibmmq_pass, "passw0rd");
         String ciph = System.getProperty(c_jvm_arg_ibmmq_ciph, null);
 
-        boolean csp = Boolean.valueOf(System.getProperty(c_jvm_arg_ibmmq_csp, "false"));
+        boolean csp = Boolean.parseBoolean(System.getProperty(c_jvm_arg_ibmmq_csp, "false"));
 
         Worker worker = new Worker(qmgr, host, port, chan, user, pass, ciph, csp);
 

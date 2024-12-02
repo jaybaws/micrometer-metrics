@@ -1,10 +1,10 @@
 # EMS metrics
 
-Bridges useful EMS metrics (server, queues, topics, durables) to Micrometer.
+Bridges useful EMS metrics (server, queues, topics, durables) as OpenTelemetry metrics.
 
 ## How it works
-This is a standalone java application that will connect to EMS using the admin Java API. Every minute, it will update it's 
-metrics. When this application is instrumented with an agent that is capable of shipping Micrometer metrics, you can easily
+This is a standalone java application that will connect to EMS using the admin Java API. Every minute, it will update its 
+metrics. When this application is instrumented with an agent that is capable of shipping OpenTelemetry metrics, you can easily
 set up and end-to-end metric feed.
 
 ## Available metrics
@@ -63,6 +63,6 @@ java \
   -Dorg.jaybaws.metrics.ems.user=${user} \
   -Dorg.jaybaws.metrics.ems.password=${password} \
   -Dorg.jaybaws.metrics.ems.url="tcp://${host}:${port}" \
-  -Dapplicationinsights.role.name=ems-micrometer-metrics \
+  -Dapplicationinsights.role.name=ems-otel-metrics \
   -jar ./ems-metrics-${version}.jar \
 ```

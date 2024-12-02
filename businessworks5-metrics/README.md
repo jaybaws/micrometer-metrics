@@ -1,6 +1,6 @@
 # BusinessWorks 5.x metrics
 
-Bridges useful bwengine microagent method (getactivities, getprocesstarterstatus, etc.) output to unique micrometer metrics.
+Bridges useful bwengine microagent method (getactivities, getprocesstarterstatus, etc.) output as OpenTelemetry metrics.
 
 ## How it works
 This javaagent will run in the bwengine JVM before the BusinessWorks code will run. This allows it to secretly enable JMX 

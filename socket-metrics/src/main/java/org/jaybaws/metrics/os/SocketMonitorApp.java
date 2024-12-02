@@ -7,11 +7,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SocketMicrometerApp {
+public class SocketMonitorApp {
 
     private static final int c_executorService_corePoolSize = 10;
 
-    private static final String c_jvm_arg_prefix = SocketMicrometerApp.class.getPackage().getName();
+    private static final String c_jvm_arg_prefix = SocketMonitorApp.class.getPackage().getName();
 
     private static final String c_jvm_arg_ports = c_jvm_arg_prefix + ".ports";
 
@@ -20,7 +20,7 @@ public class SocketMicrometerApp {
     private static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(c_executorService_corePoolSize);
 
     public static void main(String[] args) {
-        LOGGER.info("Starting OS Sockets Micrometer metrics application...");
+        LOGGER.info("Starting SocketMonitorApp application...");
 
         String ports = System.getProperty(c_jvm_arg_ports, "443,10400-10499");
         List<Integer> port_ints = new ArrayList<Integer>();

@@ -1,13 +1,15 @@
 package org.jaybaws.metrics.ems;
 import com.tibco.tibjms.admin.*;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
-import java.util.Arrays;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 
 public class Worker implements Runnable {
 
@@ -22,42 +24,45 @@ public class Worker implements Runnable {
     private final boolean getTopicsInfo;
     private final boolean getDurablesInfo;
 
-    private Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
+    private final Meter meter;
+
+    private final Map<String, Long> metrics = new HashMap<String, Long>();
 
     public Worker(String url, String user, String pass, boolean getServerInfo, boolean getQueuesInfo, boolean getTopicsInfo, boolean getDurablesInfo) {
         this.url = url;
         this.user = user;
         this.pass = pass;
 
+        OpenTelemetry sdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
+        this.meter = sdk.getMeter("com.tibco.ems");
+
+        // add the 'url' and 'host'
+
         this.getServerInfo = getServerInfo;
         this.getQueuesInfo = getQueuesInfo;
         this.getTopicsInfo = getTopicsInfo;
         this.getDurablesInfo = getDurablesInfo;
-
-        /**
-         * Set up the global (composite) Metric registry. Provide the global config generically.
-         */
-        Metrics.globalRegistry.config().commonTags(
-                "url", url
-        );
     }
 
-    private AtomicLong trackMetric(String category, String metric, String detail) {
+    private void trackMetric(String category, String metric, String detail, long value) {
         String uniqueId = category + "/" + metric + "/" + detail;
 
-        AtomicLong m = metrics.get(uniqueId);
-        if (m == null) {
-            m = Metrics.gauge(
-                    String.format("ems.%s.%s", category, metric),
-                    Arrays.asList(
-                            Tag.of("item", detail)
-                    ),
-                    new AtomicLong(-1)
-            );
-            metrics.put(uniqueId, m);
+        if (metrics.containsKey(uniqueId)) {
+            metrics.replace(uniqueId, value);
+        } else {
+            metrics.put(uniqueId, value);
+            this.meter
+                    .gaugeBuilder(String.format("ems.%s.%s", category, metric))
+                    .ofLongs()
+                    .buildWithCallback(
+                            result -> result.record(
+                                    this.metrics.get(uniqueId),
+                                    Attributes.builder()
+                                            .put("item", detail)
+                                            .build()
+                            )
+                    );
         }
-
-        return m;
     }
 
     @Override
@@ -69,38 +74,38 @@ public class Worker implements Runnable {
             String serverName = si.getServerName();
 
             if (this.getServerInfo) {
-                trackMetric("server", "state", "").set(si.getState());
-                trackMetric("server", "uptime", "").set(si.getUpTime());
+                trackMetric("server", "state", "", si.getState());
+                trackMetric("server", "uptime", "", si.getUpTime());
 
-                trackMetric("server", "message_memory", "").set(si.getMsgMem());
-                trackMetric("server", "message_memory_pooled", "").set(si.getMsgMemPooled());
+                trackMetric("server", "message_memory", "", si.getMsgMem());
+                trackMetric("server", "message_memory_pooled", "", si.getMsgMemPooled());
 
-                trackMetric("server", "queue_count", "").set(si.getQueueCount());
-                trackMetric("server", "topic_count", "").set(si.getTopicCount());
-                trackMetric("server", "connection_count", "").set(si.getConnectionCount());
-                trackMetric("server", "session_count", "").set(si.getSessionCount());
-                trackMetric("server", "producer_count", "").set(si.getProducerCount());
-                trackMetric("server", "consumer_count", "").set(si.getConsumerCount());
-                trackMetric("server", "durable_count", "").set(si.getDurableCount());
-                trackMetric("server", "route_recover_count", "").set(si.getRouteRecoverCount());
+                trackMetric("server", "queue_count", "", si.getQueueCount());
+                trackMetric("server", "topic_count", "", si.getTopicCount());
+                trackMetric("server", "connection_count", "", si.getConnectionCount());
+                trackMetric("server", "session_count", "", si.getSessionCount());
+                trackMetric("server", "producer_count", "", si.getProducerCount());
+                trackMetric("server", "consumer_count", "", si.getConsumerCount());
+                trackMetric("server", "durable_count", "", si.getDurableCount());
+                trackMetric("server", "route_recover_count", "", si.getRouteRecoverCount());
 
-                trackMetric("server", "pending_message_count", "").set(si.getPendingMessageCount());
-                trackMetric("server", "inbound_message_count", "").set(si.getInboundMessageCount());
-                trackMetric("server", "outbound_message_count", "").set(si.getOutboundMessageCount());
+                trackMetric("server", "pending_message_count", "", si.getPendingMessageCount());
+                trackMetric("server", "inbound_message_count", "", si.getInboundMessageCount());
+                trackMetric("server", "outbound_message_count", "", si.getOutboundMessageCount());
 
-                trackMetric("server", "disk_read_rate", "").set(si.getDiskReadRate());
-                trackMetric("server", "disk_write_rate", "").set(si.getDiskWriteRate());
-                trackMetric("server", "disk_read_operations_rate", "").set(si.getDiskReadOperationsRate());
-                trackMetric("server", "disk_write_operations_rate", "").set(si.getDiskWriteOperationsRate());
-                trackMetric("server", "inbound_message_rate", "").set(si.getInboundMessageRate());
-                trackMetric("server", "outbound_message_rate", "").set(si.getOutboundMessageRate());
-                trackMetric("server", "inbound_bytes_rate", "").set(si.getInboundBytesRate());
-                trackMetric("server", "outbound_bytes_rate", "").set(si.getOutboundBytesRate());
+                trackMetric("server", "disk_read_rate", "", si.getDiskReadRate());
+                trackMetric("server", "disk_write_rate", "", si.getDiskWriteRate());
+                trackMetric("server", "disk_read_operations_rate", "", si.getDiskReadOperationsRate());
+                trackMetric("server", "disk_write_operations_rate", "", si.getDiskWriteOperationsRate());
+                trackMetric("server", "inbound_message_rate", "", si.getInboundMessageRate());
+                trackMetric("server", "outbound_message_rate", "", si.getOutboundMessageRate());
+                trackMetric("server", "inbound_bytes_rate", "", si.getInboundBytesRate());
+                trackMetric("server", "outbound_bytes_rate", "", si.getOutboundBytesRate());
 
-                trackMetric("server", "pending_message_size", "").set(si.getPendingMessageSize());
-                trackMetric("server", "message_pool_size", "").set(si.getMessagePoolSize());
-                trackMetric("server", "sync_db_size", "").set(si.getSyncDBSize());
-                trackMetric("server", "async_db_size", "").set(si.getAsyncDBSize());
+                trackMetric("server", "pending_message_size", "", si.getPendingMessageSize());
+                trackMetric("server", "message_pool_size", "", si.getMessagePoolSize());
+                trackMetric("server", "sync_db_size", "", si.getSyncDBSize());
+                trackMetric("server", "async_db_size", "", si.getAsyncDBSize());
             }
 
             if (this.getQueuesInfo) {
@@ -109,30 +114,30 @@ public class Worker implements Runnable {
                     if (!qi.isTemporary()) {
                         String queueName = qi.getName();
 
-                        trackMetric("queue", "receiver_count", queueName).set(qi.getReceiverCount());
-                        trackMetric("queue", "delivered_message_count", queueName).set(qi.getDeliveredMessageCount());
-                        trackMetric("queue", "intransit_message_count", queueName).set(qi.getInTransitMessageCount());
+                        trackMetric("queue", "receiver_count", queueName, qi.getReceiverCount());
+                        trackMetric("queue", "delivered_message_count", queueName, qi.getDeliveredMessageCount());
+                        trackMetric("queue", "intransit_message_count", queueName, qi.getInTransitMessageCount());
 
-                        trackMetric("queue", "consumer_count", queueName).set(qi.getConsumerCount());
-                        trackMetric("queue", "pending_message_count", queueName).set(qi.getPendingMessageCount());
-                        trackMetric("queue", "pending_message_size", queueName).set(qi.getPendingMessageSize());
-                        trackMetric("queue", "pending_persistent_message_count", queueName).set(qi.getPendingPersistentMessageCount());
-                        trackMetric("queue", "pending_persistent_message_size", queueName).set(qi.getPendingPersistentMessageSize());
+                        trackMetric("queue", "consumer_count", queueName, qi.getConsumerCount());
+                        trackMetric("queue", "pending_message_count", queueName, qi.getPendingMessageCount());
+                        trackMetric("queue", "pending_message_size", queueName, qi.getPendingMessageSize());
+                        trackMetric("queue", "pending_persistent_message_count", queueName, qi.getPendingPersistentMessageCount());
+                        trackMetric("queue", "pending_persistent_message_size", queueName, qi.getPendingPersistentMessageSize());
 
                         StatData in_stats = qi.getInboundStatistics();
                         if (in_stats != null) {
-                            trackMetric("queue", "inbound_message_rate", queueName).set(in_stats.getMessageRate());
-                            trackMetric("queue", "inbound_bytes_rate", queueName).set(in_stats.getByteRate());
-                            trackMetric("queue", "inbound_total_messages", queueName).set(in_stats.getTotalMessages());
-                            trackMetric("queue", "inbound_total_bytes", queueName).set(in_stats.getTotalBytes());
+                            trackMetric("queue", "inbound_message_rate", queueName, in_stats.getMessageRate());
+                            trackMetric("queue", "inbound_bytes_rate", queueName, in_stats.getByteRate());
+                            trackMetric("queue", "inbound_total_messages", queueName, in_stats.getTotalMessages());
+                            trackMetric("queue", "inbound_total_bytes", queueName, in_stats.getTotalBytes());
                         }
 
                         StatData out_stats = qi.getOutboundStatistics();
                         if (out_stats != null) {
-                            trackMetric("queue", "outbound_message_rate", queueName).set(out_stats.getMessageRate());
-                            trackMetric("queue", "outbound_bytes_rate", queueName).set(out_stats.getByteRate());
-                            trackMetric("queue", "outbound_total_messages", queueName).set(out_stats.getTotalMessages());
-                            trackMetric("queue", "outbound_total_bytes", queueName).set(out_stats.getTotalBytes());
+                            trackMetric("queue", "outbound_message_rate", queueName, out_stats.getMessageRate());
+                            trackMetric("queue", "outbound_bytes_rate", queueName, out_stats.getByteRate());
+                            trackMetric("queue", "outbound_total_messages", queueName, out_stats.getTotalMessages());
+                            trackMetric("queue", "outbound_total_bytes", queueName, out_stats.getTotalBytes());
                         }
                     }
                 }
@@ -144,30 +149,30 @@ public class Worker implements Runnable {
                     if (!ti.isTemporary()) {
                         String topicName = ti.getName();
 
-                        trackMetric("topic", "subscriber_count", topicName).set(ti.getSubscriberCount());
-                        trackMetric("topic", "durable_count", topicName).set(ti.getDurableCount());
-                        trackMetric("topic", "active_durable_count", topicName).set(ti.getActiveDurableCount());
+                        trackMetric("topic", "subscriber_count", topicName, ti.getSubscriberCount());
+                        trackMetric("topic", "durable_count", topicName, ti.getDurableCount());
+                        trackMetric("topic", "active_durable_count", topicName, ti.getActiveDurableCount());
 
-                        trackMetric("topic", "consumer_count", topicName).set(ti.getConsumerCount());
-                        trackMetric("topic", "pending_message_count", topicName).set(ti.getPendingMessageCount());
-                        trackMetric("topic", "pending_message_size", topicName).set(ti.getPendingMessageSize());
-                        trackMetric("topic", "pending_persistent_message_count", topicName).set(ti.getPendingPersistentMessageCount());
-                        trackMetric("topic", "pending_persistent_message_size", topicName).set(ti.getPendingPersistentMessageSize());
+                        trackMetric("topic", "consumer_count", topicName, ti.getConsumerCount());
+                        trackMetric("topic", "pending_message_count", topicName, ti.getPendingMessageCount());
+                        trackMetric("topic", "pending_message_size", topicName, ti.getPendingMessageSize());
+                        trackMetric("topic", "pending_persistent_message_count", topicName, ti.getPendingPersistentMessageCount());
+                        trackMetric("topic", "pending_persistent_message_size", topicName, ti.getPendingPersistentMessageSize());
 
                         StatData in_stats = ti.getInboundStatistics();
                         if (in_stats != null) {
-                            trackMetric("topic", "inbound_message_rate", topicName).set(in_stats.getMessageRate());
-                            trackMetric("topic", "inbound_bytes_rate", topicName).set(in_stats.getByteRate());
-                            trackMetric("topic", "inbound_total_messages", topicName).set(in_stats.getTotalMessages());
-                            trackMetric("topic", "inbound_total_bytes", topicName).set(in_stats.getTotalBytes());
+                            trackMetric("topic", "inbound_message_rate", topicName, in_stats.getMessageRate());
+                            trackMetric("topic", "inbound_bytes_rate", topicName, in_stats.getByteRate());
+                            trackMetric("topic", "inbound_total_messages", topicName, in_stats.getTotalMessages());
+                            trackMetric("topic", "inbound_total_bytes", topicName, in_stats.getTotalBytes());
                         }
 
                         StatData out_stats = ti.getOutboundStatistics();
                         if (out_stats != null) {
-                            trackMetric("topic", "outbound_message_rate", topicName).set(out_stats.getMessageRate());
-                            trackMetric("topic", "outbound_bytes_rate", topicName).set(out_stats.getByteRate());
-                            trackMetric("topic", "outbound_total_messages", topicName).set(out_stats.getTotalMessages());
-                            trackMetric("topic", "outbound_total_bytes", topicName).set(out_stats.getTotalBytes());
+                            trackMetric("topic", "outbound_message_rate", topicName, out_stats.getMessageRate());
+                            trackMetric("topic", "outbound_bytes_rate", topicName, out_stats.getByteRate());
+                            trackMetric("topic", "outbound_total_messages", topicName, out_stats.getTotalMessages());
+                            trackMetric("topic", "outbound_total_bytes", topicName, out_stats.getTotalBytes());
                         }
                     }
                 }
@@ -178,15 +183,24 @@ public class Worker implements Runnable {
                 for (DurableInfo di : durableInfo) {
                     String durableName = di.getDurableName();
 
-                    trackMetric("durable", "pending_message_count", durableName).set(di.getPendingMessageCount());
-                    trackMetric("durable", "delivered_message_count", durableName).set(di.getDeliveredMessageCount());
-                    trackMetric("durable", "pending_message_size", durableName).set(di.getPendingMessageSize());
+                    trackMetric("durable", "pending_message_count", durableName, di.getPendingMessageCount());
+                    trackMetric("durable", "delivered_message_count", durableName, di.getDeliveredMessageCount());
+                    trackMetric("durable", "pending_message_size", durableName, di.getPendingMessageSize());
                 }
             }
 
             admin.close();
         } catch (TibjmsAdminException e) {
             LOGGER.log(Level.SEVERE, "Exception occurred while trying to gather metrics.", e);
+        }
+    }
+
+    public static String getIPAddress() {
+        try(final DatagramSocket socket = new DatagramSocket()){
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            return socket.getLocalAddress().getHostAddress();
+        } catch (Throwable t) {
+            return "127.0.0.1";
         }
     }
 }

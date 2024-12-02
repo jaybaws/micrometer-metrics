@@ -6,24 +6,30 @@ import com.ibm.mq.headers.MQDataException;
 import com.ibm.mq.headers.pcf.PCFException;
 import com.ibm.mq.headers.pcf.PCFMessage;
 import com.ibm.mq.headers.pcf.PCFMessageAgent;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 
 public class Worker implements Runnable {
 
     private static final Logger LOGGER = Logger.getLogger(Worker.class.getName());
 
-    private final Hashtable connectionProperties = new Hashtable<String, Object>();
+    private final Hashtable<String, Object> connectionProperties = new Hashtable<String, Object>();
 
-    private final Map<String, AtomicLong> metrics = new HashMap<String, AtomicLong>();
+    private final Map<String, Long> metrics = new HashMap<String, Long>();
     private final String qmgrName;
 
+    private final Meter meter;
+
     public Worker(String qmgr, String host, int port, String chan, String user, String pass, String sslCiph, boolean useMQCSP) {
+        OpenTelemetry sdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
+        this.meter = sdk.getMeter("com.ibm.mq");
+
         qmgrName = qmgr;
 
         connectionProperties.put(CMQC.TRANSPORT_PROPERTY, CMQC.TRANSPORT_MQSERIES_CLIENT);
@@ -41,30 +47,28 @@ public class Worker implements Runnable {
             connectionProperties.put(CMQC.SSL_CIPHER_SUITE_PROPERTY, sslCiph);
         }
 
-        /**
-         * Set up the global (composite) Metric registry. Provide the global config generically.
-         */
-        Metrics.globalRegistry.config().commonTags(
-                "qmgr", qmgr
-        );
+        // @TODO: add the 'qmgr' programmatically as 'resource attribute'
     }
 
-    private AtomicLong trackMetric(String category, String metric, String detail) {
+    private void trackMetric(String category, String metric, String detail, long value) {
         String uniqueId = category + "/" + metric + "/" + detail;
 
-        AtomicLong m = metrics.get(uniqueId);
-        if (m == null) {
-            m = Metrics.gauge(
-                    String.format("ibmmq.%s.%s", category, metric),
-                    Arrays.asList(
-                            Tag.of("item", detail)
-                    ),
-                    new AtomicLong(-1)
-            );
-            metrics.put(uniqueId, m);
+        if (metrics.containsKey(uniqueId)) {
+            metrics.replace(uniqueId, value);
+        } else {
+            metrics.put(uniqueId, value);
+            this.meter
+                    .gaugeBuilder(String.format("ibmmq.%s.%s", category, metric))
+                    .ofLongs()
+                    .buildWithCallback(
+                            result -> result.record(
+                                    this.metrics.get(uniqueId),
+                                    Attributes.builder()
+                                            .put("item", detail)
+                                            .build()
+                            )
+                    );
         }
-
-        return m;
     }
 
     @Override
@@ -91,12 +95,12 @@ public class Worker implements Runnable {
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "Something went wrong during the worker-run!", t);
         } finally {
-            trackMetric("qmgr", "available", "").set( (succeeded) ? 1 : 0 );
+            trackMetric("qmgr", "available", "", (succeeded) ? 1 : 0 );
         }
     }
 
     private void doServer(MQQueueManager qmgr, PCFMessageAgent agent) {
-        trackMetric("qmgr", "is_connected", "").set( (qmgr.isConnected()) ? 1 : 0 );
+        trackMetric("qmgr", "is_connected", "", (qmgr.isConnected()) ? 1 : 0 );
 
         try {
             PCFMessage request = new PCFMessage(CMQCFC.MQCMD_INQUIRE_Q_MGR_STATUS);
@@ -115,11 +119,11 @@ public class Worker implements Runnable {
                     int connection_count = response.getIntParameterValue(CMQCFC.MQIACF_CONNECTION_COUNT);
                     int ldap_connection_status = response.getIntParameterValue(CMQCFC.MQIACF_LDAP_CONNECTION_STATUS);
 
-                    trackMetric("qmgr", "status", name).set(status);
-                    trackMetric("qmgr", "chinit_status", name).set(chinit_status);
-                    trackMetric("qmgr", "cmdserver_status", name).set(cmdserver_status);
-                    trackMetric("qmgr", "connection_count", name).set(connection_count);
-                    trackMetric("qmgr", "ldap_connection_status", name).set(ldap_connection_status);
+                    trackMetric("qmgr", "status", name, status);
+                    trackMetric("qmgr", "chinit_status", name, chinit_status);
+                    trackMetric("qmgr", "cmdserver_status", name, cmdserver_status);
+                    trackMetric("qmgr", "connection_count", name, connection_count);
+                    trackMetric("qmgr", "ldap_connection_status", name, ldap_connection_status);
                 }
             }
         } catch (PCFException e) {
@@ -152,18 +156,18 @@ public class Worker implements Runnable {
                     int type = response.getIntParameterValue(CMQC.MQIA_DEFINITION_TYPE);
 
                     if (type == 1) { // This filters out all the AMQ.* crap that will blow up your registry!
-                        trackMetric("qlocal", "depth", name).set(q_depth);
-                        trackMetric("qlocal", "open_input_count", name).set(q_open_input_count);
-                        trackMetric("qlocal", "open_output_count", name).set(q_open_output_count);
+                        trackMetric("qlocal", "depth", name, q_depth);
+                        trackMetric("qlocal", "open_input_count", name, q_open_input_count);
+                        trackMetric("qlocal", "open_output_count", name, q_open_output_count);
 
                         if (response.getParameterValue(CMQC.MQIA_MSG_DEQ_COUNT) != null) {
                             int q_dequeue_count = response.getIntParameterValue(CMQC.MQIA_MSG_DEQ_COUNT);
-                            trackMetric("qlocal", "dequeued_messages", name).set(q_dequeue_count);
+                            trackMetric("qlocal", "dequeued_messages", name, q_dequeue_count);
                         }
 
                         if (response.getParameterValue(CMQC.MQIA_MSG_ENQ_COUNT) != null) {
                             int q_enqueue_count = response.getIntParameterValue(CMQC.MQIA_MSG_ENQ_COUNT);
-                            trackMetric("qlocal", "enqueued_messages", name).set(q_enqueue_count);
+                            trackMetric("qlocal", "enqueued_messages", name, q_enqueue_count);
                         }
                     }
                 }
@@ -198,14 +202,14 @@ public class Worker implements Runnable {
                     int channel_status = response.getIntParameterValue(CMQCFC.MQIACH_CHANNEL_STATUS);
                     int channel_substate = response.getIntParameterValue(CMQCFC.MQIACH_CHANNEL_SUBSTATE);
 
-                    trackMetric("channels", "bytes_sent", name).set(channel_bytes_sent);
-                    trackMetric("channels", "bytes_received", name).set(channel_bytes_received);
-                    trackMetric("channels", "buffers_sent", name).set(channel_buffers_sent);
-                    trackMetric("channels", "buffers_received", name).set(channel_buffers_received);
-                    trackMetric("channels", "messages", name).set(channel_messages);
-                    trackMetric("channels", "mca_status", name).set(channel_mca_status);
-                    trackMetric("channels", "status", name).set(channel_status);
-                    trackMetric("channels", "substate", name).set(channel_substate);
+                    trackMetric("channels", "bytes_sent", name, channel_bytes_sent);
+                    trackMetric("channels", "bytes_received", name, channel_bytes_received);
+                    trackMetric("channels", "buffers_sent", name, channel_buffers_sent);
+                    trackMetric("channels", "buffers_received", name, channel_buffers_received);
+                    trackMetric("channels", "messages", name, channel_messages);
+                    trackMetric("channels", "mca_status", name, channel_mca_status);
+                    trackMetric("channels", "status", name, channel_status);
+                    trackMetric("channels", "substate", name, channel_substate);
                 }
             }
         } catch (PCFException e) {
@@ -231,7 +235,7 @@ public class Worker implements Runnable {
 
                     int message_count = response.getIntParameterValue(CMQCFC.MQIACF_MESSAGE_COUNT);
 
-                    trackMetric("subscriptions", "message_count", name).set(message_count);
+                    trackMetric("subscriptions", "message_count", name, message_count);
                 }
             }
         } catch (PCFException e) {
@@ -262,8 +266,8 @@ public class Worker implements Runnable {
                         int pubCount = response.getIntParameterValue(CMQC.MQIA_PUB_COUNT);
                         int subCount = response.getIntParameterValue(CMQC.MQIA_SUB_COUNT);
 
-                        trackMetric("topic", "pub_count", topicName).set(pubCount);
-                        trackMetric("topic", "sub_count", topicName).set(subCount);
+                        trackMetric("topic", "pub_count", topicName, pubCount);
+                        trackMetric("topic", "sub_count", topicName, subCount);
                     }
                 }
             }
@@ -291,8 +295,8 @@ public class Worker implements Runnable {
                     int status = response.getIntParameterValue(CMQCFC.MQIACH_LISTENER_STATUS);
                     int backlog = response.getIntParameterValue(CMQCFC.MQIACH_BACKLOG);
 
-                    trackMetric("listener", "status", name).set(status);
-                    trackMetric("listener", "backlog", name).set(backlog);
+                    trackMetric("listener", "status", name, status);
+                    trackMetric("listener", "backlog", name, backlog);
                 }
             }
         } catch (PCFException e) {
@@ -318,7 +322,7 @@ public class Worker implements Runnable {
 
                     int status = response.getIntParameterValue(CMQCFC.MQIACF_SERVICE_STATUS);
 
-                    trackMetric("service", "status", name).set(status);
+                    trackMetric("service", "status", name, status);
                 }
             }
         } catch (PCFException e) {

@@ -1,14 +1,15 @@
-package org.jaybaws.metrics.os;
+package org.jaybaws.metrics.ems;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
-public class ProcessMicrometerAppTest {
+public class EMSMetricsAppTest {
 
     /**
      * Rigorous Test :-)
      */
     @Test
-    public void shouldAnswerWithTrue() {
+    public void shouldAnswerWithTrue()
+    {
         assertTrue( true );
     }
 

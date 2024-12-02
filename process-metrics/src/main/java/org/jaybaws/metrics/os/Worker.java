@@ -9,9 +9,9 @@ import java.util.regex.Pattern;
 
 public class Worker implements Runnable {
 
-    private static final Logger LOGGER = Logger.getLogger(Worker.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ProcessMonitorApp.class.getName());
 
-    private Pattern commandLinePattern;
+    private final  Pattern commandLinePattern;
 
     public Worker(String cmdline_filter) {
         this.commandLinePattern = Pattern.compile(cmdline_filter);
@@ -20,7 +20,7 @@ public class Worker implements Runnable {
     @Override
     public void run() {
         try {
-            ProcessHandle.allProcesses().forEach(p -> trackProcess(p));
+            ProcessHandle.allProcesses().forEach(this::trackProcess);
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "Something went wrong during the worker-run!", t);
         }

@@ -1,4 +1,4 @@
-# micrometer-metrics
+# otel-metrics
 A collection of agents and applications that help you export your middleware platform's metrics!
 
 ## businessworks5-metrics
