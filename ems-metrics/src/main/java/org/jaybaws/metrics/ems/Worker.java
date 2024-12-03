@@ -36,8 +36,6 @@ public class Worker implements Runnable {
         OpenTelemetry sdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
         this.meter = sdk.getMeter("com.tibco.ems");
 
-        // add the 'url' and 'host'
-
         this.getServerInfo = getServerInfo;
         this.getQueuesInfo = getQueuesInfo;
         this.getTopicsInfo = getTopicsInfo;
@@ -111,8 +109,15 @@ public class Worker implements Runnable {
             if (this.getQueuesInfo) {
                 QueueInfo[] queueInfo = admin.getQueues();
                 for (QueueInfo qi : queueInfo) {
+
                     if (!qi.isTemporary()) {
                         String queueName = qi.getName();
+
+                        trackMetric("queue", "is_exclusive", queueName, qi.isExclusive()? 1 : 0);
+                        trackMetric("queue", "is_routed", queueName, qi.isRouted()? 1 : 0);
+                        trackMetric("queue", "is_secure", queueName, qi.isSecure()? 1 : 0);
+                        trackMetric("queue", "is_static", queueName, qi.isStatic()? 1 : 0);
+                        trackMetric("queue", "is_global", queueName, qi.isGlobal()? 1 : 0);
 
                         trackMetric("queue", "receiver_count", queueName, qi.getReceiverCount());
                         trackMetric("queue", "delivered_message_count", queueName, qi.getDeliveredMessageCount());
@@ -148,6 +153,10 @@ public class Worker implements Runnable {
                 for (TopicInfo ti : topicInfo) {
                     if (!ti.isTemporary()) {
                         String topicName = ti.getName();
+
+                        trackMetric("topic", "is_secure", topicName, ti.isSecure()? 1 : 0);
+                        trackMetric("topic", "is_static", topicName, ti.isStatic()? 1 : 0);
+                        trackMetric("topic", "is_global", topicName, ti.isGlobal()? 1 : 0);
 
                         trackMetric("topic", "subscriber_count", topicName, ti.getSubscriberCount());
                         trackMetric("topic", "durable_count", topicName, ti.getDurableCount());
