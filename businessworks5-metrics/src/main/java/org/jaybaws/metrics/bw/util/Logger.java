@@ -6,9 +6,11 @@ public class Logger {
     private static volatile Logger instance = null;
 
     private java.util.logging.Logger logImpl = java.util.logging.Logger.getLogger(Constants.LOG_LOGGER_NAME);
+    private boolean traceToStdOut = false;
 
     private Logger() {
         Level logLevel = Level.parse(Constants.LOG_LEVEL_DEFAULT);
+        this.traceToStdOut = System.getenv().containsKey("ORG_JAYBAWS_CONSOLETRACE");
 
         String strLogLevel = System.getProperty(Constants.LOG_LEVEL_JVMARG);
         if (strLogLevel != null) {
@@ -39,67 +41,49 @@ public class Logger {
         return instance;
     }
 
-    public final void logInfo(String msg) {
-        this.logImpl.info(msg);
+    private final void log(Level lvl, String msg) {
+        this.logImpl.log(lvl, msg);
+        if (this.traceToStdOut) {
+            System.out.println(String.format("[%s] - %s", lvl.toString(), msg));
+        }
     }
 
-    public final void logWarning(String msg) {
-        this.logImpl.warning(msg);
+    private final void log(Level lvl, String msg, Throwable t) {
+        this.logImpl.log(lvl, msg, t);
+        if (this.traceToStdOut) {
+            System.out.println(String.format("[%s] - %s - %s", lvl.toString(), msg, t.toString()));
+        }
     }
 
-    public final void logWarning(String msg, Throwable t) {
-        this.logImpl.log(Level.WARNING, msg, t);
+    public static void info(String msg) {
+        Logger.getInstance().log(Level.INFO, msg);
     }
 
-    public final void logSevere(String msg) {
-        this.logImpl.severe(msg);
+    public static void warning(String msg) {
+        Logger.getInstance().log(Level.WARNING, msg);
     }
 
-    public final void logSevere(String msg, Throwable t) {
-        this.logImpl.log(Level.SEVERE, msg, t);
+    public static void warning(String msg, Throwable t) {
+        Logger.getInstance().log(Level.WARNING, msg, t);
     }
 
-    public final void logEntering(String className, String methodName) {
-        this.logImpl.entering(className, methodName);
+    public static void severe(String msg) {
+        Logger.getInstance().log(Level.SEVERE, msg);
     }
 
-    public final void logExiting(String className, String methodName) {
-        this.logImpl.exiting(className, methodName);
+    public static void severe(String msg, Throwable t) {
+        Logger.getInstance().log(Level.SEVERE, msg, t);
     }
 
-    public final void logFine(String msg) {
-        this.logImpl.fine(msg);
+    public static void entering(String className, String methodName) {
+        Logger.getInstance().log(Level.FINEST, String.format("Entering %s in %s.", className, methodName));
     }
 
-    public static final void info(String msg) {
-        Logger.getInstance().logInfo(msg);
+    public static void exiting(String className, String methodName) {
+        Logger.getInstance().log(Level.FINEST, String.format("Exiting %s in %s.", className, methodName));
     }
 
-    public static final void warning(String msg) {
-        Logger.getInstance().logWarning(msg);
-    }
-
-    public static final void warning(String msg, Throwable t) {
-        Logger.getInstance().logWarning(msg, t);
-    }
-
-    public static final void severe(String msg) {
-        Logger.getInstance().logSevere(msg);
-    }
-
-    public static final void severe(String msg, Throwable t) {
-        Logger.getInstance().logSevere(msg, t);
-    }
-
-    public static final void entering(String className, String methodName) {
-        Logger.getInstance().logEntering(className, methodName);
-    }
-
-    public static final void exiting(String className, String methodName) {
-        Logger.getInstance().logExiting(className, methodName);
-    }
-
-    public static final void fine(String msg) {
-        Logger.getInstance().logFine(msg);
+    public static void fine(String msg) {
+        Logger.getInstance().log(Level.FINE, msg);
     }
 }
