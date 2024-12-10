@@ -24,8 +24,13 @@ public class BW5MonitorAgent implements NotificationListener {
     public static void premain(String agentArgs) {
         if (BWUtils.isBusinessWorksEngine()) {
             Logger.info("JVM looks like a BusinessWorks engine, so we will instrument!");
-            BW5MonitorAgent bridge = new BW5MonitorAgent();
-            Logger.info("End of instrumentation!");
+
+            if (Boolean.parseBoolean(System.getProperty("bw.engine.opentelemetry.enable", "false"))) {
+                BW5MonitorAgent bridge = new BW5MonitorAgent();
+                Logger.info("End of instrumentation!");
+            } else {
+                Logger.warning("OpenTelemetry is not enabled, hence it makes no sense to proceed!");
+            }
         } else {
             Logger.warning("JVM does not look like a BusinessWorks engine... Leaving it as it is!");
         }
